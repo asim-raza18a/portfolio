@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrating Stripe Payment Intents, Implementation Guide | Asim Raza</title>
+<style>
+:root{
+  --ink:#15191c; --ink-2:#434a52; --ink-3:#6f7880;
+  --line:#e4e1da; --line-2:#efece5;
+  --paper:#fdfcfa; --paper-2:#f8f6f1; --paper-3:#f2efe8;
+  --doc-bg:#fffefc; --doc-line:#e7e3da;
+  --accent:#176b5d; --accent-soft:#e4efec; --accent-line:#bcd8d1;
+  --gold:#8f6418; --gold-soft:#fbf3e3; --gold-line:#ecdcbb;
+  --red:#8c2f22; --red-soft:#fbeeec; --red-line:#eecfc9;
+  --code-bg:#1a1f24; --code-fg:#e4e8ee;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ink:#e9e7e2; --ink-2:#b2aea6; --ink-3:#857f76;
+    --line:#2b3036; --line-2:#242930;
+    --paper:#15181c; --paper-2:#1a1e23; --paper-3:#20252b;
+    --doc-bg:#191d22; --doc-line:#2b3036;
+    --accent:#63baa9; --accent-soft:#16302b; --accent-line:#255349;
+    --gold:#d9ac63; --gold-soft:#2a2316; --gold-line:#4a3c22;
+    --red:#e0897c; --red-soft:#2d1a17; --red-line:#4d2b25;
+    --code-bg:#0f1317; --code-fg:#dbe1e8;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.72;-webkit-font-smoothing:antialiased}
+
+.topbar{border-bottom:1px solid var(--line);background:var(--paper-2);font-family:var(--sans);font-size:13.5px}
+.topbar div{max-width:1240px;margin:0 auto;padding:11px 32px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--ink-3)}
+.topbar a{color:var(--accent);text-decoration:none}
+
+.cover{border-bottom:1px solid var(--line)}
+.cover-in{max-width:1240px;margin:0 auto;padding:56px 32px 42px}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 16px}
+h1{font-size:44px;line-height:1.12;margin:0 0 12px;font-weight:600;letter-spacing:-.015em;max-width:860px}
+.sub{font-family:var(--sans);font-size:19px;color:var(--ink-2);margin:0 0 28px;max-width:700px;line-height:1.5}
+.facts{font-family:var(--sans);font-size:13.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:8px 28px;border-top:1px solid var(--line-2);padding-top:20px}
+.facts b{color:var(--ink);font-weight:650}
+
+.note{background:var(--gold-soft);border-top:1px solid var(--gold-line);border-bottom:1px solid var(--gold-line);font-family:var(--sans)}
+.note p{max-width:1240px;margin:0 auto;padding:14px 32px;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.note b{color:var(--gold)}
+
+.wrap{max-width:1240px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:260px 1fr;gap:56px;align-items:start}
+.toc{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:36px 0;font-family:var(--sans);font-size:13.5px}
+.toc p.t{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 12px}
+.toc a{display:block;padding:5px 10px;border-radius:6px;color:var(--ink-2);text-decoration:none;line-height:1.4}
+.toc a:hover{background:var(--paper-3);color:var(--ink)}
+.toc a.app{color:var(--ink-3);font-size:13px}
+.toc .grp{margin-top:14px;padding-top:10px;border-top:1px solid var(--line-2)}
+
+article{padding:36px 0 100px;min-width:0;max-width:820px}
+h2{font-size:30px;margin:52px 0 6px;font-weight:600;letter-spacing:-.012em;scroll-margin-top:16px;padding-top:18px;border-top:2px solid var(--accent)}
+h2:first-child{margin-top:0}
+h2 .num{font-family:var(--sans);font-size:13px;color:var(--accent);display:block;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+h3{font-family:var(--sans);font-size:20px;margin:34px 0 10px;font-weight:650;letter-spacing:-.008em;scroll-margin-top:16px}
+h4{font-family:var(--sans);font-size:16px;margin:26px 0 8px;font-weight:650}
+h5{font-family:var(--sans);font-size:12px;letter-spacing:.09em;text-transform:uppercase;margin:24px 0 8px;font-weight:700;color:var(--ink-3)}
+p{margin:0 0 16px}
+ul,ol{margin:0 0 16px;padding-left:24px}
+li{margin-bottom:8px}
+code{font-family:var(--mono);font-size:14px;background:var(--paper-3);padding:1.5px 5px;border-radius:4px;border:1px solid var(--line-2)}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.62;background:var(--code-bg);color:var(--code-fg);padding:18px 20px;border-radius:9px;overflow-x:auto;margin:0 0 18px}
+pre code{background:none;border:0;padding:0;color:inherit;font-size:13.5px}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:14.5px;margin:0 0 20px}
+th{text-align:left;border-bottom:2px solid var(--accent);padding:9px 12px 9px 0;font-weight:650;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+td{border-bottom:1px solid var(--line-2);padding:10px 12px 10px 0;vertical-align:top}
+blockquote{margin:0 0 18px;padding:14px 18px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-family:var(--sans);font-size:15.5px;color:var(--ink)}
+.warn{font-family:var(--sans);font-size:15px;background:var(--red-soft);border:1px solid var(--red-line);border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 18px}
+.warn b{color:var(--red)}
+.tip{font-family:var(--sans);font-size:15px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:8px;padding:14px 18px;margin:0 0 18px}
+.tip b{color:var(--gold)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+.lede{font-size:19px;color:var(--ink-2);line-height:1.62}
+footer{border-top:1px solid var(--line);background:var(--paper-2);font-family:var(--sans)}
+.foot{max-width:1240px;margin:0 auto;padding:40px 32px 54px;font-size:14px;color:var(--ink-2)}
+.foot a{color:var(--accent)}
+.foot .fine{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3);max-width:760px;line-height:1.6}
+@media (max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 20px}
+  .toc{position:static;max-height:none;padding:20px 0 0;border-bottom:1px solid var(--line)}
+  .cover-in{padding:36px 20px 28px}
+  h1{font-size:31px}
+  article{padding:26px 0 70px}
+  h2{font-size:25px}
+  .note p,.topbar div,.foot{padding-left:20px;padding-right:20px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div>
+  <span>Sample document · Asim Raza, Technical Content Writer</span>
+  <span><a href="index.html">← Back to portfolio</a></span>
+</div></div>
+
+<header class="cover"><div class="cover-in">
+  <p class="kicker">Project document · Content strategy &amp; information architecture</p>
+  <h1>Restructuring a knowledge base</h1>
+  <p class="sub">A complete content strategy engagement: how to audit an underperforming help centre, design an architecture around what users are actually trying to do, migrate without losing search equity, and measure whether any of it worked.</p>
+  <div class="facts">
+    <span><b>Audience</b> Content leads, support managers, heads of CX</span>
+    <span><b>Assumed knowledge</b> None technical</span>
+    <span><b>Includes</b> Worked rewrites and a full article set</span>
+    <span><b>Length</b> 22 sections, 4 appendices</span>
+  </div>
+</div></header>
+
+<div class="note"><p><b>About this sample.</b> This is a portfolio piece demonstrating content strategy and information architecture work. The client, product and figures are invented. The frameworks and measurement definitions referenced are real and publicly documented, and are named so the reasoning can be checked against the source. Nothing here is affiliated with or endorsed by any organisation named.</p></div>
+
+<div class="wrap">
+<nav class="toc">
+  <p class="t">Contents</p>
+  <a href="#s1">1. The engagement</a>
+  <a href="#s2">2. Why help centres fail</a>
+  <a href="#s3">3. The data to gather</a>
+  <a href="#s4">4. Content inventory</a>
+  <a href="#s5">5. Scoring the inventory</a>
+  <a href="#s6">6. Diátaxis as a frame</a>
+  <a href="#s7">7. Adapting it to support</a>
+  <a href="#s8">8. The question-title principle</a>
+  <a href="#s9">9. The new architecture</a>
+  <a href="#s10">10. Worked rewrites</a>
+  <a href="#s11">11. A full article set</a>
+  <a href="#s12">12. Writing standards</a>
+  <a href="#s13">13. Search and findability</a>
+  <a href="#s14">14. Migration and redirects</a>
+  <a href="#s15">15. What deflection means</a>
+  <a href="#s16">16. The measurement plan</a>
+  <a href="#s17">17. Guardrail metrics</a>
+  <a href="#s18">18. The AI answer layer</a>
+  <a href="#s19">19. Localisation and market tone</a>
+  <a href="#s20">20. Governance</a>
+  <a href="#s21">21. Failure modes</a>
+  <a href="#s22">22. Stakeholders</a>
+  <a href="#s23">23. Timeline and effort</a>
+  <a href="#s24">24. What I would do differently</a>
+  <div class="grp">
+    <a class="app" href="#a1">Appendix A · Audit rubric</a>
+    <a class="app" href="#a2">Appendix B · Article templates</a>
+    <a class="app" href="#a3">Appendix C · Metric definitions</a>
+    <a class="app" href="#a4">Appendix D · Glossary</a>
+    <a class="app" href="#a5">Appendix E · Ticket coding scheme</a>
+    <a class="app" href="#a6">Appendix F · The article set</a>
+    <a class="app" href="#a7">Appendix G · Discovery interview guide</a>
+  </div>
+</nav>
+
+<article>
+<h2 id="s1"><span class="num">Section 1</span>The engagement</h2>
+<p class="lede">A mid-sized SaaS company with 340 help centre articles, a support team of nine, and a rising ticket volume that no amount of hiring was going to fix. This document is the account of restructuring it, written so the method is reusable.</p>
+<h3>The brief as given</h3>
+<p>"Our help centre is a mess. Customers can't find anything. Can you reorganise it?"</p>
+<p>That brief contains an assumption worth testing before accepting it. "Reorganise" implies the content is right and the arrangement is wrong. Usually the content is also wrong, in a specific and diagnosable way, and rearranging it produces a tidier version of the same problem.</p>
+<h3>The brief after diagnosis</h3>
+<p>Three weeks of audit produced a different statement of the problem:</p>
+<ol>
+  <li><b>The help centre is organised around the product's features.</b> Customers arrive with a situation, not a feature. The gap between "Subscriptions" and "why was I charged twice" is where most failed searches happen.</li>
+  <li><b>Articles answer more than one question each.</b> The average article covered 3.4 distinct user questions. Search returns the article; the customer cannot find their question inside it.</li>
+  <li><b>Nobody owns it.</b> 61% of articles had not been edited in over 18 months. Four described features that no longer existed.</li>
+  <li><b>There is no measurement.</b> Article views were tracked. Whether anyone's problem was solved was not.</li>
+</ol>
+<p>Point four is why points one to three had persisted. Without measurement there was no evidence anything was wrong beyond the support team's frustration, and no way to demonstrate improvement afterwards.</p>
+<h3>What was delivered</h3>
+<table>
+  <tr><th>Deliverable</th><th>Detail</th></tr>
+  <tr><td>Content audit</td><td>All 340 articles scored against a published rubric, with a disposition for each</td></tr>
+  <tr><td>Information architecture</td><td>A category structure derived from ticket data rather than from the product menu</td></tr>
+  <tr><td>Rewritten core set</td><td>64 articles replacing 218, written to template</td></tr>
+  <tr><td>Writing standards</td><td>A style guide the support team could apply without me</td></tr>
+  <tr><td>Migration plan</td><td>Redirect map preserving inbound links and search ranking</td></tr>
+  <tr><td>Measurement framework</td><td>Deflection defined properly, with guardrails, and a dashboard</td></tr>
+  <tr><td>Governance model</td><td>Named ownership, review cadence, and a route for support agents to flag gaps</td></tr>
+</table>
+<h3>Outcome, with the caveats attached</h3>
+<p>Six months after launch, ticket volume for the categories covered by the rewrite was down 23% against a flat overall customer base. Search sessions ending without a ticket rose from 54% to 71%.</p>
+<p>Two caveats that belong next to those numbers. The company also shipped an in-app onboarding change in month three, which plausibly contributed. And the comparison period included a pricing change that generated an unusual volume of billing tickets in the baseline. The direction is clear; the precise attribution is not, and claiming otherwise would be dishonest.</p>
+
+<h2 id="s2"><span class="num">Section 2</span>Why help centres fail</h2>
+<p class="lede">The failure is almost always structural rather than editorial. The articles are often individually fine and collectively useless.</p>
+<h3>Failure one: organised by product, used by problem</h3>
+<p>A help centre built from the product's navigation looks logical to the people who built the product. It is organised by the thing the company sells rather than by the trouble the customer is in.</p>
+<table>
+  <tr><th>Customer arrives thinking</th><th>Help centre offers</th><th>Result</th></tr>
+  <tr><td>"Why was I charged twice?"</td><td>Billing → Subscriptions → Managing your plan</td><td>Three clicks, no answer, ticket</td></tr>
+  <tr><td>"It won't let me invite my colleague"</td><td>Account → Users and permissions → Roles</td><td>Reads about roles, problem is a seat limit, ticket</td></tr>
+  <tr><td>"My data looks wrong"</td><td>Integrations → Sync → Configuration</td><td>Does not know the word "sync", searches "wrong numbers", finds nothing</td></tr>
+</table>
+<p>The customer does not know which feature their problem belongs to. Requiring them to know it before they can find help is the central design error.</p>
+<h3>Failure two: one article, many questions</h3>
+<p>Long articles accumulate. A page called "Managing your subscription" grows to cover upgrades, downgrades, proration, cancellation, reactivation and VAT numbers, because each was added when someone asked.</p>
+<p>Search then returns that article for six different queries. The customer lands on a page that does contain their answer, somewhere, and has to find it. A meaningful share do not, and the article's view count rises while its usefulness falls. View counts make this failure look like success.</p>
+<h3>Failure three: written from the inside</h3>
+<p>Articles use the vocabulary of the product team. "Configure your sync cadence" is precise and unsearchable. The customer types "how often does it update".</p>
+<p>This is measurable. Pull the zero-result searches and the vocabulary gap is listed for you, in the customer's own words.</p>
+<h3>Failure four: no owner, no cadence</h3>
+<p>Without named ownership, articles are written in response to incidents and never revisited. The decay is invisible because nothing fails loudly. A customer following an article that describes a button which no longer exists files a ticket about the button, and the ticket is answered without anyone updating the article.</p>
+<h3>Failure five: measuring views</h3>
+<p>Views measure arrival, not resolution. An article with 4,000 views and 900 follow-on tickets is not a popular article; it is a failing one with a discoverability problem that makes it worse. Section 15 covers what to measure instead.</p>
+<div class="tip"><b>The diagnostic question.</b> For your five highest-volume ticket subjects, can a customer get from the help centre homepage to the answer in two clicks, using words they would actually type? If not, the problem is architecture, and rewriting individual articles will not fix it.</div>
+
+<h2 id="s3"><span class="num">Section 3</span>The data to gather</h2>
+<p class="lede">Audit before design. Everything in the new architecture should be traceable to something in this data, because that is what makes it defensible when a stakeholder prefers a different arrangement.</p>
+<h3>The six sources</h3>
+<table>
+  <tr><th>Source</th><th>What it tells you</th><th>Typical effort</th></tr>
+  <tr><td>Ticket volume by subject, 12 months</td><td>What customers actually need help with, ranked. The single most important input.</td><td>Half a day, if tagging is adequate</td></tr>
+  <tr><td>Help centre search queries</td><td>The words customers use. Includes the zero-result list, which is a free content backlog.</td><td>An hour</td></tr>
+  <tr><td>Article analytics</td><td>Views, time on page, exit rate. Weak signals individually, useful in combination.</td><td>An hour</td></tr>
+  <tr><td>Session-to-ticket data</td><td>Which articles are read immediately before a ticket is filed. The most diagnostic single dataset.</td><td>A day, usually requires joining two systems</td></tr>
+  <tr><td>Support agent interviews</td><td>Which articles they send, which they avoid, and which questions have no article at all</td><td>Six to eight conversations</td></tr>
+  <tr><td>The articles themselves</td><td>Inventory, ownership, age, accuracy</td><td>The bulk of the work</td></tr>
+</table>
+<h3>Ticket tagging is usually inadequate</h3>
+<p>Expect the existing tags to be unusable. They are typically a mix of product areas, severity labels and categories added by one person in 2022. Two options:</p>
+<p><b>Sample and hand-code.</b> Take 400 tickets at random across twelve months, read them, and assign your own categories. 400 gives roughly ±5 percentage points at 95% confidence on category share, which is precise enough to rank categories and not precise enough to argue about small differences.</p>
+<p><b>Cluster the text.</b> Faster at volume, and produces clusters that need human naming anyway. Useful as a cross-check against the hand-coded sample rather than as a replacement for it.</p>
+<p>Do the hand-coding even if you also cluster. Reading 400 real tickets is the single most valuable thing in the audit, and it is the part most often skipped in favour of a dashboard.</p>
+<h3>The zero-result search list</h3>
+<p>Export every search that returned nothing, deduplicate, and sort by frequency. This list is simultaneously a content backlog and a vocabulary guide. Two distinct findings come out of it:</p>
+<ul>
+  <li><b>Genuine content gaps.</b> Questions with no article. Write them.</li>
+  <li><b>Vocabulary mismatches.</b> Content exists but under different words. Do not write a new article; fix the title and add the customer's term to the body.</li>
+</ul>
+<p>The second category is usually larger and is much cheaper to fix.</p>
+<h3>Session-to-ticket joining</h3>
+<p>The most useful dataset is the hardest to assemble: for each ticket, which help centre articles did that customer view in the preceding thirty minutes?</p>
+<p>It requires joining help centre analytics to the ticketing system on a user or session identifier, which frequently nobody has done. It is worth the day it takes. It converts the question "which articles are bad" from an opinion into a ranked list.</p>
+
+<h2 id="s4"><span class="num">Section 4</span>Content inventory</h2>
+<p class="lede">A row per article, with enough fields to make disposition decisions mechanical rather than deliberative. 340 articles is three days of work and not negotiable.</p>
+<h3>Fields</h3>
+<table>
+  <tr><th>Field</th><th>Source</th><th>Use</th></tr>
+  <tr><td>URL, title, category</td><td>Export</td><td>Identity</td></tr>
+  <tr><td>Word count</td><td>Export</td><td>Proxy for how many questions it covers</td></tr>
+  <tr><td>Last edited</td><td>Export</td><td>Decay signal</td></tr>
+  <tr><td>Views, 12 months</td><td>Analytics</td><td>Demand signal, weak alone</td></tr>
+  <tr><td>Follow-on ticket rate</td><td>Joined data</td><td>Failure signal, strong</td></tr>
+  <tr><td>Inbound links</td><td>Crawl or search console</td><td>Migration risk</td></tr>
+  <tr><td>Organic entrances</td><td>Search console</td><td>Migration risk, and SEO value</td></tr>
+  <tr><td>Questions answered</td><td>Manual</td><td>Count of distinct user questions in the article</td></tr>
+  <tr><td>Accuracy</td><td>Manual</td><td>Current, stale, or wrong</td></tr>
+  <tr><td>Mode</td><td>Manual</td><td>Which of the four content types it is, or how many it mixes</td></tr>
+  <tr><td>Disposition</td><td>Derived</td><td>Keep, rewrite, split, merge, retire</td></tr>
+</table>
+<h3>Counting questions per article</h3>
+<p>This field is where the structural problem becomes visible. Read each article and count the distinct user questions it answers. "Managing your subscription" answering upgrades, downgrades, proration and cancellation scores 4.</p>
+<p>In the audited set, the distribution was:</p>
+<table>
+  <tr><th>Questions per article</th><th>Articles</th><th>Share</th></tr>
+  <tr><td>1</td><td>96</td><td>28%</td></tr>
+  <tr><td>2</td><td>81</td><td>24%</td></tr>
+  <tr><td>3 to 4</td><td>102</td><td>30%</td></tr>
+  <tr><td>5 to 8</td><td>47</td><td>14%</td></tr>
+  <tr><td>9 or more</td><td>14</td><td>4%</td></tr>
+</table>
+<p>72% of articles answered more than one question. Those articles accounted for 81% of follow-on tickets. That correlation is the argument for the whole project, stated in two numbers, and it is the slide that got the work approved.</p>
+<h3>Accuracy triage</h3>
+<p>Mark accuracy by inspection against the current product, not by asking whether anyone has complained.</p>
+<table>
+  <tr><th>Rating</th><th>Meaning</th><th>Found</th></tr>
+  <tr><td>Current</td><td>Matches the product today</td><td>188 (55%)</td></tr>
+  <tr><td>Stale</td><td>Broadly right, details wrong: screenshots, menu names, limits</td><td>138 (41%)</td></tr>
+  <tr><td>Wrong</td><td>Describes behaviour that no longer exists</td><td>14 (4%)</td></tr>
+</table>
+<p>The 14 wrong articles are worth isolating and fixing in week one, before any restructuring. They are actively generating tickets and the fix is cheap. Delivering that in the first week also buys credibility for the longer project.</p>
+
+<h2 id="s5"><span class="num">Section 5</span>Scoring the inventory</h2>
+<p class="lede">Disposition should fall out of the data rather than out of a discussion. A simple scoring rule applied consistently beats article-by-article judgement, and it survives challenge.</p>
+<h3>The rule</h3>
+<pre><code>demand      = views (12 months), percentile rank
+failure     = follow-on ticket rate, percentile rank
+structure   = questions answered (1 is good, >2 is bad)
+accuracy    = current | stale | wrong
+
+disposition:
+  wrong                                        → retire or rewrite
+  questions > 2                                → split
+  questions <= 2 and failure > 70th pct        → rewrite
+  questions <= 2 and accuracy = stale          → update
+  demand < 10th pct and no inbound links       → retire
+  otherwise                                    → keep</code></pre>
+<h3>Applied to 340 articles</h3>
+<table>
+  <tr><th>Disposition</th><th>Articles</th><th>Becomes</th><th>Effort</th></tr>
+  <tr><td>Split</td><td>163</td><td>~210 focused articles, of which 64 written new and the rest derived</td><td>High</td></tr>
+  <tr><td>Rewrite</td><td>38</td><td>38</td><td>Medium</td></tr>
+  <tr><td>Update</td><td>71</td><td>71</td><td>Low</td></tr>
+  <tr><td>Keep</td><td>24</td><td>24</td><td>None</td></tr>
+  <tr><td>Retire</td><td>44</td><td>Redirected, not deleted</td><td>Low</td></tr>
+</table>
+<h3>Scope control</h3>
+<p>Splitting 163 articles is not a project anyone will fund in one go. Sequence by demand.</p>
+<p>The audit showed that the top 6 ticket categories accounted for 71% of volume. Those categories contained 94 of the 163 articles requiring splits. Rewriting those 94 first captures most of the available benefit for 58% of the work, and the remainder can run as business as usual afterwards.</p>
+<div class="tip"><b>Phase on demand, not on tidiness.</b> There is a strong pull towards completing the restructure uniformly, because a half-restructured help centre looks inconsistent. Resist it. A consistent help centre that took nine months beats nothing, but an inconsistent one that fixed the top six categories in six weeks beats both.</div>
+<h3>Retiring without deleting</h3>
+<p>Retired articles are redirected, never deleted. Three reasons: inbound links from forums and emails stay alive, accumulated search ranking transfers to the replacement, and support agents who bookmarked the old URL are not stranded.</p>
+<p>Section 14 covers the redirect map. It is the step most likely to be skipped and the one with the longest tail of consequences.</p>
+
+<h2 id="s6"><span class="num">Section 6</span>Diátaxis as a frame</h2>
+<p class="lede">Before designing an architecture it helps to have a theory of what the content is for. Diátaxis is the most useful publicly available one, and it needs adapting for a support knowledge base rather than adopting wholesale.</p>
+<h3>The framework</h3>
+<p>Diátaxis identifies four distinct user needs and four corresponding forms of documentation: tutorials, how-to guides, reference and explanation. Each has a different purpose and needs to be written in a different way.</p>
+<p>The four are organised along two axes. Tutorials and explanation serve the acquisition of skill, which is the user's study. How-to guides and reference serve the application of skill, which is the user's work. Separately, tutorials and how-to guides serve action, while reference and explanation contain propositional knowledge.</p>
+<table>
+  <tr><th></th><th>Serves action</th><th>Propositional knowledge</th></tr>
+  <tr><td><b>Acquisition of skill (study)</b></td><td>Tutorials</td><td>Explanation</td></tr>
+  <tr><td><b>Application of skill (work)</b></td><td>How-to guides</td><td>Reference</td></tr>
+</table>
+<h3>The claim that matters</h3>
+<p>The framework's central assertion is that crossing or blurring the boundaries between these four is at the heart of a vast number of documentation problems. A tutorial overloaded with explanation stops teaching. A how-to guide that pauses to explain concepts stops helping someone get work done. A reference page with narrative in it becomes unscannable.</p>
+<p>That claim matched the audit findings directly. The 72% of articles answering multiple questions were, almost without exception, also mixing modes. A single page would open with an explanation of what subscriptions are, proceed to a procedure for upgrading, and end with a table of plan limits. Three modes, three audiences, one URL.</p>
+<h3>Why it is credible</h3>
+<p>The framework is used by Canonical as the foundation for its documentation, and has been adopted in projects including Gatsby and nix.dev, among others. Its own documentation notes it has been applied successfully across hundreds of projects. It is public, free, and specific enough to act on, which is rare among content frameworks.</p>
+<h3>The caution in the source material</h3>
+<p>Worth repeating because it is routinely ignored: the framework is intended as a way of thinking about documentation, not as a rigid template or a mandate for top-down reorganisation. Teams that treat the four quadrants as four mandatory top-level navigation items produce something worse than they started with, because customers do not arrive knowing whether they need a how-to or an explanation.</p>
+<div class="warn"><b>Do not put the four modes in your navigation.</b> They are an authoring and auditing tool. A customer with a billing question does not think "I require a how-to guide". Use the modes to decide what each page is and how to write it; use the customer's situation to decide where it lives.</div>
+
+<h2 id="s7"><span class="num">Section 7</span>Adapting it to support</h2>
+<p class="lede">Diátaxis was developed for technical product documentation. A support knowledge base has a different population and a different dominant need, and the mapping needs adjusting.</p>
+<h3>The distribution is different</h3>
+<p>In developer documentation the four modes are roughly balanced. In a support knowledge base they are not, and designing as though they were produces a lot of content nobody reads.</p>
+<table>
+  <tr><th>Mode</th><th>Developer docs</th><th>Support KB</th><th>Why</th></tr>
+  <tr><td>How-to guides</td><td>~30%</td><td><b>~65%</b></td><td>Almost every support contact is someone trying to complete a task or recover from a failure</td></tr>
+  <tr><td>Reference</td><td>~35%</td><td>~15%</td><td>Limits, pricing, supported formats, error codes</td></tr>
+  <tr><td>Explanation</td><td>~20%</td><td>~15%</td><td>"Why was I charged this" is explanation, and it is high volume</td></tr>
+  <tr><td>Tutorials</td><td>~15%</td><td><b>~5%</b></td><td>Customers in trouble are not studying. Tutorials belong in onboarding, not the help centre.</td></tr>
+</table>
+<h3>The missing fifth mode</h3>
+<p>Support knowledge bases need a category the framework does not name, because it was not built for this population: <b>diagnosis</b>.</p>
+<p>A customer whose sync is not running does not know what is wrong. They cannot choose a how-to guide because they do not yet know which task they need to perform. What they need is a page that narrows the possibilities, and that page is structured as elimination rather than instruction.</p>
+<table>
+  <tr><th>Mode</th><th>Reader's state</th><th>Page shape</th></tr>
+  <tr><td>How-to</td><td>Knows the task, needs the steps</td><td>Numbered procedure</td></tr>
+  <tr><td><b>Diagnosis</b></td><td>Knows the symptom, not the cause</td><td>Ordered checks, each eliminating a cause, each branching to a how-to</td></tr>
+</table>
+<p>Diagnosis pages are the highest-value content in a support knowledge base and the least likely to exist, because they do not correspond to any product feature and therefore nobody is responsible for writing them.</p>
+<h3>Mapping the audited content</h3>
+<p>Re-coding the 340 articles by mode gave:</p>
+<table>
+  <tr><th>Mode</th><th>Articles (pure)</th><th>Articles (mixed in)</th><th>Should be</th></tr>
+  <tr><td>How-to</td><td>71</td><td>203</td><td>~140</td></tr>
+  <tr><td>Reference</td><td>22</td><td>88</td><td>~32</td></tr>
+  <tr><td>Explanation</td><td>9</td><td>114</td><td>~32</td></tr>
+  <tr><td>Diagnosis</td><td><b>3</b></td><td>26</td><td><b>~18</b></td></tr>
+  <tr><td>Tutorial</td><td>11</td><td>11</td><td>~5, moved to onboarding</td></tr>
+</table>
+<p>Three diagnosis articles against an estimated need of eighteen. Those eighteen subjects accounted for 34% of ticket volume. Writing them was the highest-return single action in the project, and it was invisible until the content was coded by mode.</p>
+
+<h2 id="s8"><span class="num">Section 8</span>The question-title principle</h2>
+<p class="lede">One rule changes findability more than any other: the title should be the question the customer would type, phrased as they would phrase it.</p>
+<h3>The rule</h3>
+<p>Not a topic. Not a feature name. The question.</p>
+<table>
+  <tr><th>Before</th><th>After</th><th>Why</th></tr>
+  <tr><td>Understanding your invoice</td><td>Why was I charged this amount?</td><td>Matches the search. "Understanding" matches nothing anyone types.</td></tr>
+  <tr><td>Subscription management</td><td>How do I change my plan?</td><td>Names the task</td></tr>
+  <tr><td>Sync configuration</td><td>My data hasn't updated</td><td>Uses the symptom, which is what the customer has</td></tr>
+  <tr><td>User provisioning</td><td>How do I add someone to my team?</td><td>"Provisioning" is internal vocabulary</td></tr>
+  <tr><td>Data retention policy</td><td>What happens to my data if I cancel?</td><td>The policy is the answer; the question is what gets searched</td></tr>
+  <tr><td>Troubleshooting export errors</td><td>My export failed or is stuck</td><td>Symptom, not category</td></tr>
+</table>
+<h3>Why it works</h3>
+<p>Three mechanisms, in order of effect.</p>
+<p><b>Search matching.</b> Help centre search is usually keyword-based and weak. A title containing the customer's actual words matches; a title containing the product team's words does not.</p>
+<p><b>Scannability.</b> A results list of questions can be scanned for the right one. A results list of noun phrases requires the reader to infer what each contains.</p>
+<p><b>Authoring discipline.</b> This is the underrated one. A title that is a question constrains the article to answering that question. "Understanding your invoice" can absorb anything. "Why was I charged this amount?" cannot absorb a procedure for changing your plan, because the mismatch is obvious to the writer.</p>
+<p>The third mechanism is why this rule prevents the multi-question problem from reappearing after the restructure.</p>
+<h3>Where it does not apply</h3>
+<p>Reference pages are not questions. "Plan limits", "Supported file formats" and "Error code reference" are correct as noun phrases, because the reader is looking up a value rather than asking something. Forcing a question onto a reference table produces awkward titles with no benefit.</p>
+<h3>Getting the phrasing right</h3>
+<p>Do not invent the question. Take it from the data. The zero-result search list and the ticket subject lines contain the exact phrasings, including the ones that are grammatically poor. "Why 2 charges" is a real search; the article answering it should contain that phrase somewhere even if the title is better written.</p>
+
+<h2 id="s9"><span class="num">Section 9</span>The new architecture</h2>
+<p class="lede">Categories derived from ticket volume, named in customer language, ordered by frequency. The product's own structure does not appear anywhere.</p>
+<h3>The top level</h3>
+<table>
+  <tr><th>Category</th><th>Ticket share</th><th>Articles</th><th>Named from</th></tr>
+  <tr><td>Billing and payments</td><td>22%</td><td>14</td><td>Ticket cluster, customer vocabulary</td></tr>
+  <tr><td>Getting your data in</td><td>18%</td><td>16</td><td>Ticket cluster. Internally this is "Integrations".</td></tr>
+  <tr><td>Something isn't working</td><td>14%</td><td>11</td><td>Diagnosis entry point. Did not previously exist.</td></tr>
+  <tr><td>Your team and access</td><td>9%</td><td>8</td><td>Ticket cluster</td></tr>
+  <tr><td>Reports and exports</td><td>8%</td><td>7</td><td>Ticket cluster</td></tr>
+  <tr><td>Account and settings</td><td>6%</td><td>5</td><td>Ticket cluster</td></tr>
+  <tr><td>Everything else</td><td>23%</td><td>3</td><td>Long tail, mostly routed to support deliberately</td></tr>
+</table>
+<h3>Decisions worth explaining</h3>
+<p><b>"Something isn't working" is a category, not a tag.</b> It is the entry point for customers who have a symptom and no vocabulary. Every diagnosis article lives here, and each one branches to how-to guides in the other categories. This is the single biggest departure from the original structure and it absorbed 14% of tickets directly.</p>
+<p><b>"Getting your data in" rather than "Integrations".</b> Customers do not search for "integrations" when their import fails. They search for "import", "upload", "sync", "connect". The category name uses the outcome, and the article titles carry the vocabulary.</p>
+<p><b>Six categories, not twelve.</b> Every additional top-level category makes the choice harder at the moment the customer is least patient. Six is close to the limit of what can be scanned without reading. The long tail is deliberately under-served in navigation and served by search instead.</p>
+<p><b>Ordered by volume, not alphabetically.</b> Alphabetical order optimises for a customer who knows the name of what they want. That customer does not need the navigation.</p>
+<h3>Depth</h3>
+<p>Two levels, never three. Category, then article. A customer who has clicked twice and not found the answer is a customer who is about to file a ticket, and a third level is where that happens.</p>
+<pre><code>Help centre
+├── Billing and payments
+│   ├── Why was I charged this amount?
+│   ├── How do I change my plan?
+│   ├── How do I update my card?
+│   ├── My payment failed, what happens now?
+│   ├── Where do I find my invoices?
+│   ├── How do I add a VAT number?
+│   ├── How do I cancel?
+│   └── ... (14 total)
+├── Getting your data in
+├── Something isn't working
+│   ├── My data hasn't updated
+│   ├── My import failed
+│   ├── My export is stuck or empty
+│   ├── I can't log in
+│   └── ... (11 total)
+└── ...</code></pre>
+<h3>The homepage</h3>
+<p>Three elements, in this order: a search box that is the visual focus, the six categories, and the five most-viewed articles. Nothing else.</p>
+<p>No carousel, no announcements, no product marketing. A customer on the help centre homepage has a problem, and every element that is not search or navigation is an obstacle between them and the answer.</p>
+
+<h2 id="s10"><span class="num">Section 10</span>Worked rewrites</h2>
+<p class="lede">Three before-and-after pairs, chosen because each demonstrates a different failure. The before text is representative of what the audit found rather than quoted from any real source.</p>
+<h3>Rewrite one: the multi-question article</h3>
+<p><b>Before.</b> One article, 1,840 words, titled "Managing your subscription". 11,400 views in twelve months, 2,100 follow-on tickets, a follow-on rate of 18%.</p>
+<div class="warn" style="background:var(--paper-3);border-color:var(--line);border-left-color:var(--ink-3)"><b>Managing your subscription</b><br><br>
+Your subscription determines which features are available to your account and how many seats you have. You can view your current subscription from the Settings area by selecting Billing from the left-hand menu. From here you are able to perform a number of subscription management actions including upgrading, downgrading, updating your payment information and cancellation.<br><br>
+To upgrade, select the plan you require and confirm. Upgrades take effect immediately and you will be charged a prorated amount for the remainder of the current billing period. Downgrades are also available and will take effect at the end of the current billing period...<br><br>
+<i>[continues for a further 1,600 words covering payment methods, invoices, VAT, cancellation, reactivation and seat counting]</i></div>
+<p><b>Problems.</b> Seven distinct questions in one page. The answer to "why was I charged this amount", which was the highest-volume ticket subject, is one sentence buried at word 190. The opening paragraph explains what a subscription is, which nobody arriving at this page needs.</p>
+<p><b>After.</b> Seven articles. The one replacing the highest-volume question:</p>
+<div class="tip" style="background:var(--accent-soft);border-color:var(--accent-line)"><b>Why was I charged this amount?</b><br><br>
+Most unexpected amounts come from one of three things. Check them in this order.<br><br>
+<b>1. You changed your plan mid-cycle</b><br>
+When you upgrade, you pay the difference for the days remaining in your billing period, not the full new price. The charge is calculated per day.<br><br>
+<i>Worked example.</i> You are on Team at £40/month, billed on the 1st. On the 12th you upgrade to Business at £100/month.<br>
+· Days remaining in the period: 18 of 30<br>
+· Unused Team credit: £40 × 18/30 = £24.00<br>
+· Business for 18 days: £100 × 18/30 = £60.00<br>
+· <b>Charged now: £60.00 − £24.00 = £36.00</b><br>
+· On the 1st next month you are charged the full £100.<br><br>
+<b>2. You added or removed seats</b><br>
+Seats are charged the same way. Adding a seat mid-cycle charges the remaining days; removing one credits them against your next invoice rather than refunding.<br><br>
+<b>3. Tax was applied or changed</b><br>
+If you added a VAT number, or your billing address changed country, your tax rate changes from the next invoice. Tax appears as a separate line on the invoice.<br><br>
+<b>Still doesn't match?</b><br>
+Open the invoice from Settings → Billing → Invoices. Every line is itemised with its date range. If a line is unexplained, send us the invoice number and we will explain it within one working day.</div>
+<p><b>What changed.</b> The question is the title. The answer begins in the first line. The arithmetic is shown, because proration is a trust problem and asserting the number without showing it does not resolve the doubt. The closing paragraph offers a route out with a specific thing to send, which shortens the ticket if one is filed anyway.</p>
+<h3>Rewrite two: the missing diagnosis page</h3>
+<p><b>Before.</b> No article. The subject generated 310 tickets in twelve months. Customers searched "data not updating", "sync stopped", "old numbers" and found a configuration reference page that did not address any of it.</p>
+<p><b>After.</b> A diagnosis article, structured as elimination rather than instruction.</p>
+<div class="tip" style="background:var(--accent-soft);border-color:var(--accent-line)"><b>My data hasn't updated</b><br><br>
+Work through these in order. Each one rules something out, so don't skip ahead. Step 3 is the answer about half the time, but only if steps 1 and 2 passed.<br><br>
+<b>1. Check it has actually stopped</b><br>
+Go to Settings → Connections and look at <b>Last completed</b>, not <b>Last attempted</b>.<br>
+· Completed within your sync interval → it is running. Your problem is something else; see <i>Some records are missing</i>.<br>
+· Attempted recently but never completed → it is failing partway. Go to step 4.<br>
+· No attempt in over 24 hours → go to step 2.<br><br>
+<b>2. Check the connection hasn't expired</b><br>
+The same page shows <b>Active</b>, <b>Expired</b> or <b>Revoked</b>.<br>
+Expired is the most common cause overall. Most providers expire the connection after 90 days, and some expire it when the authorising person changes their password. Click <b>Reconnect</b>.<br>
+One catch: sign in as the <i>same person</i> who set the connection up. A different admin will connect successfully and bring across a different set of records.<br><br>
+<b>3. Check a filter hasn't excluded everything</b><br>
+Open <b>Connection settings → Filters</b>.<br>
+A filter matching zero records completes successfully in about two seconds and reports success. From the dashboard it looks identical to a working sync.<br>
+The usual cause is a filter on a field that was renamed or deleted in the source system. Set filters to <b>None</b>, run a manual sync, and see whether records appear.<br><br>
+<b>4. Read the error on the failed run</b><br>
+Click the failed run to expand it.<br>
+· <b>Rate limited</b>, the source system throttled us. Nothing to do; it usually clears within an hour.<br>
+· <b>Field type mismatch</b>, a field changed type at source. Open field mapping; the field is highlighted.<br>
+· <b>Permission denied</b>, the connection is active but lacks access to that object. Grant access at source, then <b>reconnect</b>. Granting alone is not enough, because the connection caches its permissions.<br>
+· <b>Record limit</b>, you are over your plan's limit. The sync stops rather than truncating silently.<br><br>
+<b>Still stuck?</b><br>
+Send us the <b>Run ID</b> from the failed run, shown at the top right when you expand it. With it we can see exactly what happened in about two minutes.</div>
+<p><b>What changed.</b> The page did not exist, so everything is new. The structural choice is that each step either resolves the problem or definitively eliminates a cause, so the reader is never unsure whether to continue. Step 3 documents a silent failure that presents as success, which is the kind of detail that only comes from reading real tickets.</p>
+<h3>Rewrite three: the internally-worded article</h3>
+<p><b>Before.</b> Title: "Configuring seat allocation and provisioning thresholds". 240 views, 71 follow-on tickets, a 30% follow-on rate. Zero-result searches included "add person", "invite colleague", "add user to account" and "how many people can I add".</p>
+<p><b>After.</b> Split into two, both titled as questions, both carrying the customer's vocabulary.</p>
+<div class="tip" style="background:var(--accent-soft);border-color:var(--accent-line)"><b>How do I add someone to my team?</b><br><br>
+Go to <b>Settings → Team → Invite</b>, enter their work email, choose a role, and send. They get an email with a link that is valid for seven days.<br><br>
+<b>Choosing a role</b><br>
+· <b>Viewer</b>, can read everything in the workspaces you assign, and can export it.<br>
+· <b>Editor</b>, can also create and change records. This is the right default for most people.<br>
+· <b>Admin</b>, can also manage billing and other people. Two is usually enough.<br><br>
+<b>If the invite doesn't arrive</b><br>
+Check their spam folder first. If it is not there, the most common cause is that the address is already on another account; a person can belong to several accounts, but the invite will fail silently if the address is already pending on one of them. Resend from the same page and the error will be shown.<br><br>
+<b>Running out of seats?</b> See <i>What happens when I reach my seat limit?</i></div>
+<p><b>What changed.</b> The title uses words customers type. The procedure is three lines because that is how long it is. The role descriptions are stated in terms of what the person can do to the business rather than in terms of permission names. The silent-failure case is documented. The seat limit, which was the second question buried in the original, is now its own article with a link.</p>
+
+<h2 id="s11"><span class="num">Section 11</span>A full article set</h2>
+<p class="lede">The complete Billing and payments category, as delivered. Fourteen articles replacing thirty-one, with the reasoning for each.</p>
+<table>
+  <tr><th>#</th><th>Article</th><th>Mode</th><th>Ticket share</th><th>Replaces</th></tr>
+  <tr><td>1</td><td>Why was I charged this amount?</td><td>Explanation</td><td>31%</td><td>Part of 4 articles</td></tr>
+  <tr><td>2</td><td>How do I change my plan?</td><td>How-to</td><td>14%</td><td>Part of 3</td></tr>
+  <tr><td>3</td><td>My payment failed, what happens now?</td><td>Diagnosis</td><td>11%</td><td>New</td></tr>
+  <tr><td>4</td><td>How do I update my card?</td><td>How-to</td><td>9%</td><td>Part of 2</td></tr>
+  <tr><td>5</td><td>Where do I find my invoices and receipts?</td><td>How-to</td><td>8%</td><td>Part of 2</td></tr>
+  <tr><td>6</td><td>How do I add a VAT or tax number?</td><td>How-to</td><td>6%</td><td>Part of 2</td></tr>
+  <tr><td>7</td><td>How do I cancel?</td><td>How-to</td><td>5%</td><td>1 article</td></tr>
+  <tr><td>8</td><td>What happens to my data if I cancel?</td><td>Explanation</td><td>4%</td><td>Part of 2</td></tr>
+  <tr><td>9</td><td>How are seats counted and charged?</td><td>Explanation</td><td>3%</td><td>Part of 3</td></tr>
+  <tr><td>10</td><td>What happens when I reach my seat limit?</td><td>Explanation</td><td>3%</td><td>Part of 2</td></tr>
+  <tr><td>11</td><td>Can I get a refund?</td><td>Explanation</td><td>2%</td><td>New</td></tr>
+  <tr><td>12</td><td>How do I change who receives billing emails?</td><td>How-to</td><td>2%</td><td>Part of 1</td></tr>
+  <tr><td>13</td><td>Plan comparison and limits</td><td>Reference</td><td>1%</td><td>Part of 5</td></tr>
+  <tr><td>14</td><td>Accepted payment methods by country</td><td>Reference</td><td>1%</td><td>Part of 2</td></tr>
+</table>
+<h3>Two more from the set, written out</h3>
+<div class="tip" style="background:var(--accent-soft);border-color:var(--accent-line)"><b>My payment failed, what happens now?</b><br><br>
+Nothing happens immediately. Your account stays active and we retry.<br><br>
+<b>The retry schedule</b><br>
+· Day 0, payment fails, we email you<br>
+· Day 3, first retry<br>
+· Day 7, second retry, reminder email<br>
+· Day 14, final retry, final notice<br>
+· Day 17, account moves to read-only<br><br>
+Read-only means you and your team can still sign in, view everything and export your data. Nothing is deleted. You cannot create or change records until payment succeeds.<br><br>
+<b>What to do</b><br>
+Update your card at <b>Settings → Billing → Payment method</b>. We attempt payment immediately when you save a new card, so you do not need to wait for the next scheduled retry.<br><br>
+<b>Why it usually fails</b><br>
+In order of frequency: the card expired, the bank declined an international or recurring payment, or there were insufficient funds at the moment of the attempt. If your bank declined it, calling them and asking to allow the payment is usually faster than changing cards.<br><br>
+<b>If you need more time</b><br>
+Reply to any of the notice emails. We can extend the window. We would rather do that than put your account into read-only.</div>
+<div class="tip" style="background:var(--accent-soft);border-color:var(--accent-line)"><b>What happens to my data if I cancel?</b><br><br>
+<b>Short answer.</b> Your data stays available to export for 30 days after cancellation, then it is deleted permanently.<br><br>
+<b>The timeline</b><br>
+· <b>On cancellation</b>, your plan runs to the end of the period you have paid for. Nothing changes until then.<br>
+· <b>End of the paid period</b>, the account becomes read-only. You and your team can sign in, view everything and export. You cannot create or change records.<br>
+· <b>30 days later</b>, the account and all its data are permanently deleted. This cannot be reversed, by you or by us.<br><br>
+<b>Exporting before you go</b><br>
+Go to <b>Settings → Export → Full account export</b>. You get a ZIP containing every record as CSV, plus any files you uploaded. Large accounts take up to an hour and we email you when it is ready.<br><br>
+Export before the read-only period ends if you can. Export still works during read-only, but it is one fewer thing to remember.<br><br>
+<b>If you change your mind</b><br>
+Reactivating within the 30 days restores everything exactly as it was. After 30 days there is nothing to restore and you would be starting a new account.<br><br>
+<b>If you need longer</b><br>
+Email us before the 30 days are up and we can extend the retention window. We cannot recover anything after deletion, so ask in advance rather than afterwards.</div>
+<h3>Notes on the set</h3>
+<p><b>The cancellation articles are written helpfully.</b> There is persistent pressure to make cancellation content vague or hard to find. It does not reduce cancellations; it moves the conversation to the customer's bank, where it costs a chargeback fee and a reputation. Both articles state the position plainly and offer a route to ask for more time, which is the only intervention that actually retains anyone at that point.</p>
+<p><b>Article 3 is a diagnosis page in a category that normally has none.</b> "My payment failed" is a symptom with several causes, and the customer needs to know what happens next before they need to know how to fix it. Leading with "nothing happens immediately" removes the panic that generates the ticket.</p>
+<p><b>Articles 13 and 14 are reference and titled as noun phrases.</b> Consistent with the rule in Section 8: reference is looked up, not asked.</p>
+
+<h2 id="s12"><span class="num">Section 12</span>Writing standards</h2>
+<p class="lede">A style guide the support team could apply without me. Short enough to be read, specific enough to settle arguments.</p>
+<h3>Structure, by mode</h3>
+<table>
+  <tr><th>Mode</th><th>Opens with</th><th>Body</th><th>Closes with</th></tr>
+  <tr><td>How-to</td><td>The first step. No preamble.</td><td>Numbered steps, one action each</td><td>What to do if it did not work</td></tr>
+  <tr><td>Diagnosis</td><td>Ordered checks, with how many there are</td><td>Each check eliminates a cause and branches</td><td>What to send support, named exactly</td></tr>
+  <tr><td>Explanation</td><td>The short answer, in one or two sentences</td><td>The detail, with a worked example where numbers are involved</td><td>The edge case, and a route out</td></tr>
+  <tr><td>Reference</td><td>The table</td><td>The table</td><td>Nothing</td></tr>
+</table>
+<h3>Voice</h3>
+<p>Second person, present tense, active. The reader is a competent adult having a bad afternoon.</p>
+<table>
+  <tr><th>Write</th><th>Not</th></tr>
+  <tr><td>Go to Settings → Billing.</td><td>You will need to navigate to the Billing section, which can be found under Settings.</td></tr>
+  <tr><td>Your data stays available for 30 days.</td><td>Please note that data is retained for a period of 30 days.</td></tr>
+  <tr><td>This fails if the connection has expired.</td><td>Unfortunately, this may fail in certain circumstances.</td></tr>
+  <tr><td>Click <b>Reconnect</b>.</td><td>Simply click the Reconnect button.</td></tr>
+</table>
+<h3>Banned words, with reasons</h3>
+<ul>
+  <li><b>Simply, just, easy, obviously.</b> If it were easy the customer would not be reading. These words tell someone who is struggling that the fault is theirs.</li>
+  <li><b>Unfortunately.</b> Adds nothing to a limitation and reads as evasive.</li>
+  <li><b>Please.</b> In an instruction it is noise. "Please enter your email" becomes "Enter your email".</li>
+  <li><b>Navigate to.</b> Say "go to".</li>
+  <li><b>Utilise, leverage, facilitate.</b> Use, use, help.</li>
+  <li><b>Seamless, robust, powerful, intuitive.</b> Unverifiable. Give the number or cut the word.</li>
+</ul>
+<h3>Recurring rulings</h3>
+<table>
+  <tr><th>Question</th><th>Ruling</th></tr>
+  <tr><td>UI elements</td><td>Bold, exact casing: click <b>Save changes</b>.</td></tr>
+  <tr><td>Navigation paths</td><td><b>Settings → Billing → Invoices</b>, with arrows, bolded as one unit.</td></tr>
+  <tr><td>Numbers</td><td>Spell out one to nine, numerals from 10. Always numerals with units.</td></tr>
+  <tr><td>Dates</td><td>14 March 2026. Never numeric-only, which is ambiguous across our markets.</td></tr>
+  <tr><td>Currency</td><td>Always with the symbol and never assumed. £40, not 40.</td></tr>
+  <tr><td>Screenshots</td><td>Only where the interface is genuinely hard to describe. Each one is a maintenance liability.</td></tr>
+  <tr><td>Links to other articles</td><td>Link the question, not "click here". Maximum three per article.</td></tr>
+  <tr><td>Article length</td><td>If it exceeds 600 words, check whether it is answering two questions.</td></tr>
+</table>
+<div class="tip"><b>The test for any sentence.</b> Would a customer who is mildly annoyed, on a phone, with a deadline, find this useful or patronising? Write for that reader. Everything in this section follows from that one question.</div>
+
+<h2 id="s13"><span class="num">Section 13</span>Search and findability</h2>
+<p class="lede">Most help centre search is weak keyword matching. Design the content so that weak search works, rather than waiting for better search.</p>
+<h3>What help centre search usually does</h3>
+<p>Matches terms in the title heavily, the body lightly, and rarely understands synonyms. It does not know that "invoice" and "receipt" are the same thing to a customer, or that "can't log in" and "password not working" are the same problem.</p>
+<p>Two consequences. Titles carry most of the matching weight, which is the second argument for the question-title rule. And synonyms have to be present in the text, because the search will not supply them.</p>
+<h3>The synonym block</h3>
+<p>Every article carries a short line of alternative phrasings, taken from the zero-result search list. Placed at the end, in small text, or in a metadata field if the platform supports one.</p>
+<pre><code>Article: Why was I charged this amount?
+Also searched as: double charge, charged twice, wrong amount,
+  unexpected charge, why 2 charges, proration, pro rata,
+  charged more than my plan, extra charge on invoice</code></pre>
+<p>This is unglamorous and it closed 38% of the zero-result searches in the audited set without a single new article being written. It is the cheapest intervention in the whole project.</p>
+<h3>Measuring search, not guessing</h3>
+<table>
+  <tr><th>Metric</th><th>Tells you</th><th>Act when</th></tr>
+  <tr><td>Zero-result rate</td><td>Share of searches returning nothing</td><td>Above 10%. Each one is a content gap or a vocabulary gap.</td></tr>
+  <tr><td>Search refinement rate</td><td>Share of sessions with a second, different search</td><td>Above 25%. The first result set was wrong.</td></tr>
+  <tr><td>Search exit rate</td><td>Share of searches where nothing was clicked</td><td>Above 30%. Results looked irrelevant from the titles.</td></tr>
+  <tr><td>Search-to-ticket rate</td><td>Share of searching sessions ending in a ticket</td><td>The headline number. Track the trend.</td></tr>
+</table>
+<p>Search exit rate is the underused one. It isolates a specific failure: the content existed and was returned, and the titles did not persuade anyone to click. That is a titling problem, not a content gap, and it is fixed in an afternoon.</p>
+<h3>Search ranking inputs you control</h3>
+<ul>
+  <li><b>Title match</b> is the strongest. Use the customer's words.</li>
+  <li><b>First paragraph</b> is usually weighted above the rest of the body. Put the answer there anyway, for the reader.</li>
+  <li><b>Headings</b> are often weighted. Phrase subheadings as the sub-questions they answer.</li>
+  <li><b>Recency</b> is a factor on some platforms. Touching an article's edit date changes its ranking, which is an argument for a genuine review cadence and against bulk no-op edits.</li>
+</ul>
+
+<h2 id="s14"><span class="num">Section 14</span>Migration and redirects</h2>
+<p class="lede">The step most likely to be rushed and the one with the longest tail of consequences. Every retired URL needs a destination.</p>
+<h3>Why it matters more than it looks</h3>
+<p>Help centre URLs accumulate inbound links for years. They are in support email replies, forum posts, internal wikis, onboarding decks and the browser bookmarks of every agent on the team. A 404 breaks all of them silently.</p>
+<p>They also accumulate search ranking. An article that has ranked for "export stuck" for three years carries authority that a new URL does not. A redirect transfers most of it; a deletion discards it.</p>
+<h3>The redirect map</h3>
+<p>One row per retired URL. Build it as part of the disposition work, not afterwards.</p>
+<table>
+  <tr><th>Old URL</th><th>New URL</th><th>Rule</th></tr>
+  <tr><td>/managing-your-subscription</td><td>/billing/why-was-i-charged-this-amount</td><td>Split. Redirect to the highest-volume child.</td></tr>
+  <tr><td>/subscription-upgrades</td><td>/billing/how-do-i-change-my-plan</td><td>Direct equivalent</td></tr>
+  <tr><td>/sync-configuration</td><td>/data/my-data-hasnt-updated</td><td>Reframed. Redirect to the symptom page.</td></tr>
+  <tr><td>/legacy-reports-v1</td><td>/reports</td><td>No equivalent. Redirect to the category.</td></tr>
+</table>
+<h3>Rules</h3>
+<ol>
+  <li><b>Use permanent redirects</b> so that search engines transfer ranking. Temporary redirects do not.</li>
+  <li><b>Redirect a split article to its highest-volume child</b>, not to the category page. A customer who clicked a link about subscriptions and lands on a category index has to start again.</li>
+  <li><b>Never redirect to the homepage.</b> It is the same as a 404 with extra steps, and it is the most common lazy choice.</li>
+  <li><b>Keep redirects for at least two years.</b> Inbound links from emails do not expire.</li>
+  <li><b>Crawl afterwards</b> and verify every old URL resolves to a 200 after at most one hop. Redirect chains lose ranking and are slow.</li>
+</ol>
+<h3>Launch sequence</h3>
+<table>
+  <tr><th>Step</th><th>Action</th><th>Why this order</th></tr>
+  <tr><td>1</td><td>Publish new articles, unlinked from navigation</td><td>Lets you check rendering and fix errors with no traffic</td></tr>
+  <tr><td>2</td><td>Internal review by three support agents</td><td>They know what is wrong faster than anyone. Budget two days for fixes.</td></tr>
+  <tr><td>3</td><td>Switch navigation to the new structure</td><td>The visible change</td></tr>
+  <tr><td>4</td><td>Apply redirects</td><td>Immediately after, not before. Redirecting to unpublished pages creates 404s.</td></tr>
+  <tr><td>5</td><td>Resubmit the sitemap</td><td>Speeds reindexing</td></tr>
+  <tr><td>6</td><td>Brief the support team</td><td>Same day. Agents sending old links is the main source of post-launch confusion.</td></tr>
+  <tr><td>7</td><td>Monitor 404s daily for two weeks</td><td>Catches what the redirect map missed</td></tr>
+</table>
+<div class="warn"><b>Expect a temporary dip.</b> Organic traffic to the help centre typically falls for two to four weeks after a restructure while search engines reindex. This is normal and it will be raised as evidence the project failed. Say it will happen before it happens, in writing, and the conversation is much shorter.</div>
+
+<h2 id="s15"><span class="num">Section 15</span>What deflection means</h2>
+<p class="lede">Deflection is the metric this work is judged on and it is routinely computed wrongly in a way that flatters the result.</p>
+<h3>The definition</h3>
+<p>Deflection rate is the share of support demand resolved by self-service rather than by a person:</p>
+<pre><code>deflection = self-service resolutions
+             ───────────────────────────────────────────
+             self-service resolutions + tickets created</code></pre>
+<p>The denominator is <b>total demand</b>, not just tickets. That matters. Measured this way, a rising rate genuinely means self-service is carrying more of the load. Measured against tickets alone, the number moves whenever traffic changes for unrelated reasons.</p>
+<h3>Views are not deflections</h3>
+<p>The most common error is counting article views as deflections. A view is an arrival, not a resolution. An article can be viewed by someone who reads it, fails to find their answer, and files a ticket thirty seconds later. Counting that as a deflection records a failure as a success.</p>
+<p>False deflection also absorbs abandoned sessions and customers who simply gave up. Someone who leaves without an answer and never contacts you has not been deflected; they have been lost, and depending on your product they may have churned.</p>
+<h3>Resolution needs a signal</h3>
+<p>A self-service event should count as a resolution only if there is positive evidence of it. Two acceptable models:</p>
+<table>
+  <tr><th>Model</th><th>Signal</th><th>Strength</th></tr>
+  <tr><td>Explicit</td><td>The customer clicks "this solved my problem", or declines the offer to contact support after reading</td><td>Strong. Low volume, so it under-counts.</td></tr>
+  <tr><td>Implicit with a window</td><td>A search or article view with no ticket from the same person within a defined window, typically 24 hours</td><td>Weaker but complete. Needs the guardrail below.</td></tr>
+</table>
+<p>Use both. Report the explicit figure as the conservative floor and the implicit one as the working number, and say which is which.</p>
+<h3>The honest position on benchmarks</h3>
+<p>There is no universally accepted benchmark for knowledge base deflection. Published figures vary enormously because the definitions vary enormously, and a vendor quoting a benchmark is usually quoting one computed with a definition favourable to the vendor.</p>
+<p>Do not set a target from someone else's number. Measure your own baseline with a defensible definition, then target improvement against it. "We went from 54% to 71% on a consistent definition" is a stronger claim than "we hit the industry benchmark", and it is one you can actually defend.</p>
+
+<h2 id="s16"><span class="num">Section 16</span>The measurement plan</h2>
+<p class="lede">Eight metrics, each with a formula, an owner and an action. Anything without an action attached is reporting rather than measurement.</p>
+<table>
+  <tr><th>Metric</th><th>Formula</th><th>Acts as</th></tr>
+  <tr><td>Deflection rate</td><td>Resolutions ÷ (resolutions + tickets)</td><td>Headline. Trend over time, not an absolute target.</td></tr>
+  <tr><td>Search success rate</td><td>Searches with a click ÷ total searches</td><td>Titling quality</td></tr>
+  <tr><td>Zero-result rate</td><td>Searches with no results ÷ total searches</td><td>Content and vocabulary gaps</td></tr>
+  <tr><td>Article follow-on rate</td><td>Tickets within 30 min of viewing ÷ views, per article</td><td>Per-article failure. The ranked list of what to fix next.</td></tr>
+  <tr><td>Article helpfulness</td><td>Positive ÷ (positive + negative) votes</td><td>Weak signal. Directional only; voters are not representative.</td></tr>
+  <tr><td>Content freshness</td><td>Share of articles reviewed within 12 months</td><td>Governance health</td></tr>
+  <tr><td>Ticket volume by category</td><td>Count, normalised by customer count</td><td>The business outcome</td></tr>
+  <tr><td>Time to resolution</td><td>Median, for tickets that are filed anyway</td><td>Secondary benefit. Better articles shorten the tickets you still get.</td></tr>
+</table>
+<h3>The per-article ranked list</h3>
+<p>The follow-on rate is the operationally useful one, because it produces a work queue rather than a judgement. Articles with high views and high follow-on rates are failing loudly and are worth fixing first.</p>
+<pre><code>SELECT a.title,
+       a.views_30d,
+       t.follow_on_tickets,
+       ROUND(100.0 * t.follow_on_tickets / NULLIF(a.views_30d,0), 1) AS rate_pct
+FROM article_views a
+LEFT JOIN follow_on_tickets t ON t.article_id = a.id
+WHERE a.views_30d >= 100
+ORDER BY t.follow_on_tickets DESC
+LIMIT 20;</code></pre>
+<p>Order by absolute ticket count rather than by rate. A 40% rate on 20 views is noise; a 12% rate on 3,000 views is 360 tickets a month.</p>
+<h3>Normalise by customer count</h3>
+<p>Raw ticket volume rises as the customer base grows, which makes any improvement invisible. Report tickets per 100 customers per month. Teams that skip this step find their successful project appears to have done nothing.</p>
+
+<h2 id="s17"><span class="num">Section 17</span>Guardrail metrics</h2>
+<p class="lede">Deflection can be improved by making it harder to contact support. That is not an improvement and the guardrails exist to detect it.</p>
+<h3>The four guardrails</h3>
+<table>
+  <tr><th>Guardrail</th><th>Detects</th><th>Alert when</th></tr>
+  <tr><td>Reopened-as-ticket rate</td><td>Customers who were "deflected", then filed the same question shortly after</td><td>Rising. Deflection that defers contact rather than resolving it is added friction, not a saving.</td></tr>
+  <tr><td>Post-contact satisfaction</td><td>Whether customers who did get through are more frustrated</td><td>Falling</td></tr>
+  <tr><td>Churn in self-served cohorts</td><td>Customers who gave up silently</td><td>Rising relative to customers who contacted support</td></tr>
+  <tr><td>Escalation and complaint rate</td><td>Problems that got worse because contact was delayed</td><td>Rising</td></tr>
+</table>
+<h3>Reopened-as-ticket is the important one</h3>
+<p>If a customer reads an article, does not file a ticket that day, and files one about the same subject two days later, the first day was not a deflection. It was a delay, and the delay made the experience worse than filing immediately would have.</p>
+<p>Measure it over a seven-day window rather than 24 hours, because the whole point is to catch the deferred contacts that a short window misses.</p>
+<h3>The anti-pattern to refuse</h3>
+<div class="warn"><b>Do not hide the contact route.</b> There is reliable pressure, usually from whoever owns the support cost line, to bury the "contact us" link behind additional steps. It raises deflection and it raises churn, complaints and chargebacks by more. If this is proposed, ask for the churn number to be reported alongside the deflection number, and the proposal usually withdraws itself.</div>
+<p>A good help centre reduces contact because people found their answer. Measure the mechanism, not just the outcome, or you will optimise the wrong thing successfully.</p>
+
+<h2 id="s18"><span class="num">Section 18</span>The AI answer layer</h2>
+<p class="lede">Most help centres now sit behind a retrieval-backed assistant, or will. The restructure described here makes that layer work better, and it does so for reasons worth stating precisely, because the common assumption is the opposite.</p>
+<h3>The assumption to dismantle</h3>
+<p>The assumption is that a language model over the content makes structure unnecessary. If the model can read 340 articles and synthesise an answer, why bother splitting the multi-question ones?</p>
+<p>Because retrieval happens before synthesis, and retrieval operates on chunks. A 1,400-word article answering four questions is chunked into pieces that each carry a fragment of four different answers. The embedding of such a chunk sits in a region of vector space that belongs to none of the four questions cleanly. It is retrieved for all of them and is the best match for none.</p>
+<p>The structural work in Sections 4 through 11 is therefore not made redundant by an answer layer. It is a precondition for one that behaves.</p>
+<h3>Why question titles help retrieval specifically</h3>
+<p>Chunking strategies commonly prepend the article title to each chunk, so that a fragment carries its context into the index. The quality of that context is then determined by the title.</p>
+<table>
+  <tr><th>Title</th><th>What the chunk carries</th><th>Effect on retrieval</th></tr>
+  <tr><td>Subscription Management</td><td>A topic label shared by 14 articles</td><td>Fourteen articles compete for every billing query. Ranking is decided by chunk body alone.</td></tr>
+  <tr><td>Why was I charged this amount?</td><td>The question the chunk answers</td><td>Title and query occupy similar vector space. The right article ranks first.</td></tr>
+</table>
+<p>This is the same property that helps human search, arriving through a different mechanism. A title written as the customer's question is close to the customer's query in whatever representation the retriever uses, whether that is BM25 term overlap or a dense embedding. Writing for the human search box and writing for the retriever are, usefully, the same job.</p>
+<h3>What the answer layer cannot fix</h3>
+<p>Four content problems survive any amount of model quality, and it is worth being clear about them because they are the ones that generate contacts after an assistant is deployed.</p>
+<ul>
+  <li><b>Wrong content.</b> A model retrieving an article that describes behaviour removed two releases ago will state the removed behaviour confidently. The fourteen wrong articles found in the audit were a liability before the assistant and are a larger one after it, because the assistant removes the cues a human reader uses to notice staleness: the old screenshot, the date, the unfamiliar button name.</li>
+  <li><b>Missing content.</b> Retrieval cannot return what was never written. The eighteen absent diagnosis articles are eighteen topics on which the assistant will either refuse or improvise. Both produce a ticket, and the second produces a worse one.</li>
+  <li><b>Internal vocabulary.</b> A customer asking about "users" against content that says "seats" relies on term overlap or on the embedding having learned the equivalence. Sometimes it has. The synonym lines from Section 13 make this deterministic rather than hopeful.</li>
+  <li><b>Contradiction.</b> Two articles stating different retention periods was survivable when each had its own audience. Fed to a retriever, it is a coin flip, and the assistant presents whichever it found without flagging that the other exists.</li>
+</ul>
+<h3>Content changes that specifically serve retrieval</h3>
+<p>Four additions on top of the standards in Section 12, each cheap, each aimed at the retriever rather than the reader.</p>
+<p><b>Front-load the answer.</b> Already a rule for readers, in Section 12. It matters more here, because if the first chunk of an article contains the answer rather than a preamble, the retrieved chunk is the useful one. An article that spends 200 words on context before answering will have its first chunk retrieved and its answer left behind.</p>
+<p><b>Make headings self-contained.</b> "Step 3" tells a chunk nothing. "Step 3: enter the billing address" survives being separated from its parent.</p>
+<p><b>State the scope explicitly.</b> Write "On the Business and Enterprise plans" rather than relying on the article living in a section called Business plans. Navigational context is lost at chunk time. Anything the reader would have inferred from where the page sits must be in the text.</p>
+<p><b>Keep tables narrow and give them captions.</b> A wide table flattens into a chunk that reads as noise. A caption above it stating what the table contains gives the retriever something to match on.</p>
+<h3>Measurement changes</h3>
+<p>An answer layer breaks the deflection measurement described in Section 15, because the assistant sits between the customer and the article. The session now has an outcome of its own.</p>
+<table>
+  <tr><th>Metric</th><th>Definition</th><th>Why it matters</th></tr>
+  <tr><td>Answered rate</td><td>Sessions where the assistant produced an answer rather than refusing or escalating</td><td>Coverage. A low rate points at content gaps, not model quality.</td></tr>
+  <tr><td>Citation coverage</td><td>Share of answers citing at least one article</td><td>An uncited answer is an unverifiable one. Track it; a falling rate means retrieval is missing.</td></tr>
+  <tr><td>Cited-article distribution</td><td>Which articles are cited, and how often</td><td>The new work queue. An article cited often and followed by tickets is the highest-priority rewrite in the help centre.</td></tr>
+  <tr><td>Post-answer ticket rate</td><td>Tickets within 30 minutes of an assistant answer</td><td>The guardrail. Equivalent to the follow-on rate in Section 16, and interpreted the same way.</td></tr>
+  <tr><td>Refusal topics</td><td>Clustered subjects of refusals</td><td>Direct replacement for zero-result searches as a content-gap signal.</td></tr>
+</table>
+<p>The refusal log is the single most useful artefact the assistant produces for a content team. Zero-result searches told us what customers could not find. Refusals tell us what does not exist, with the question phrased in full sentences rather than three keywords. It is a better signal than the one it replaces, and it should be reviewed on the same monthly cadence.</p>
+<h3>The sequencing question</h3>
+<p>Organisations ask whether to deploy the assistant before or after the restructure. The honest answer depends on which failure they can tolerate.</p>
+<p>Deploying first produces answers drawn from content known to be wrong in fourteen places and absent in eighteen topics. It will work acceptably on the well-covered subjects and badly on exactly the subjects that generate the most contacts, because those are the ones the audit found underserved.</p>
+<p>The defensible middle path, and the one taken here: fix the wrong articles and write the missing diagnosis set first, which is three weeks of work, then deploy the assistant against that content while the restructure continues. Retrieval does not depend on navigation, so the assistant gets the benefit of the content work without waiting for the architecture.</p>
+
+<h2 id="s19"><span class="num">Section 19</span>Localisation and market tone</h2>
+<p class="lede">The audited help centre was English only, serving customers in 40 countries. The question of what to translate came up in week six and the answer was narrower than the stakeholders expected.</p>
+<h3>Translate by demand, not by coverage</h3>
+<p>The instinct is to translate everything into the top five languages, which for 64 articles is 320 translations and a permanent maintenance liability on every one.</p>
+<p>The data said something else. Ticket volume by language showed 71% of non-English contacts concentrated in two languages and in six subjects, all of them billing or account access. Translating 64 articles into five languages serves a demand curve that does not exist.</p>
+<table>
+  <tr><th>Tier</th><th>Scope</th><th>Articles</th><th>Rationale</th></tr>
+  <tr><td>Full translation</td><td>Two languages, the six highest-volume subjects</td><td>14 each</td><td>Covers 71% of non-English demand at 4% of the naive cost</td></tr>
+  <tr><td>Machine translation, reviewed</td><td>Same two languages, next 20 articles</td><td>20 each</td><td>Reviewed by a support agent who speaks the language, not a translator</td></tr>
+  <tr><td>Machine translation, unreviewed, labelled</td><td>Everything else</td><td>Remainder</td><td>Labelled as machine translated with a link to the English original</td></tr>
+  <tr><td>English only</td><td>Articles stating legal or financial obligations</td><td>6</td><td>A mistranslated obligation is worse than an untranslated one</td></tr>
+</table>
+<p>The last row caused the only real argument. The position that held: an article stating what the company will and will not refund should not exist in a machine translation that nobody has reviewed, because the translation is a statement the company has made. Six articles were held back on that basis and translated properly in a later phase.</p>
+<h3>The vocabulary problem repeats per language</h3>
+<p>The synonym work in Section 13 does not survive translation. Customers searching in Spanish use Spanish words, and those words are not the translator's choices.</p>
+<p>The method is the same and has to be repeated: pull the zero-result searches for that language, read them, add the terms customers actually used. Four hours per language, done once, and it closed a similar share of failed searches as the English pass.</p>
+<h3>Tone across markets</h3>
+<p>The voice table in Section 12 was written for one market and needed two adjustments, both discovered by agents rather than by the content team.</p>
+<p><b>Directness reads differently.</b> "You cannot do that on this plan" translates into a register that reads as curt in several languages where the English is merely plain. The rule adopted: in translated content, keep the sentence's information and let the reviewing agent adjust its register. This is the one case where the translated article is permitted to diverge from the English in tone, and the reason is recorded in the style guide so that a future reviewer does not "correct" it back.</p>
+<p><b>Formal address.</b> Languages with a formal and informal second person force a choice that English hides. It was made once, written down, and applied consistently, because inconsistency within a help centre is more noticeable than either choice.</p>
+<h3>What was deliberately not done</h3>
+<p>No separate help centres per region. No region-specific article sets beyond the six legal articles. Both were proposed and both multiply the maintenance surface by the number of regions, which is the same decay mechanism described in Section 20, with more places to decay.</p>
+<p>One content set, translated by demand, with scope stated in the text rather than implied by which regional site the reader landed on. This is the same principle as the chunking advice above, arrived at for a different reason.</p>
+
+<h2 id="s20"><span class="num">Section 20</span>Governance</h2>
+<p class="lede">A restructured help centre decays back to its original state in roughly eighteen months without governance. This section is what prevents the work being repeated by someone else in two years.</p>
+<h3>Named ownership</h3>
+<p>One person owns the help centre. Not a team, not a rota, one person. They do not write everything; they decide what exists, approve structural changes and are accountable for the freshness metric.</p>
+<p>In the audited organisation this was given to the support team lead, with 20% of their time formally allocated. The allocation is the part that matters. Ownership without time is a name on a wiki page.</p>
+<h3>The review cadence</h3>
+<table>
+  <tr><th>Trigger</th><th>Action</th><th>Owner</th></tr>
+  <tr><td>Product release</td><td>Review the articles touching the changed area, before release</td><td>Product manager flags; content owner schedules</td></tr>
+  <tr><td>Monthly</td><td>Review the top 20 articles by follow-on tickets</td><td>Content owner</td></tr>
+  <tr><td>Monthly</td><td>Clear the zero-result search list</td><td>Content owner</td></tr>
+  <tr><td>Quarterly</td><td>Review any article untouched for 12 months</td><td>Content owner, delegated</td></tr>
+  <tr><td>Any time</td><td>Agent flags a gap or an error</td><td>Agent raises; content owner triages within a week</td></tr>
+</table>
+<h3>The agent feedback route</h3>
+<p>Support agents are the best available sensor for content problems and are almost never given a route to report them. The route must take less than a minute or it will not be used.</p>
+<p>What worked: a one-click button in the ticketing tool that creates a content ticket pre-filled with the ticket ID, the customer's question and the article they tried to send. Agents used it 40 to 60 times a month, which is a steady supply of genuine, specific, prioritised content work.</p>
+<p>What did not work, in a previous attempt at the same organisation: a shared spreadsheet. It received four entries in six months.</p>
+<h3>Making product releases visible to content</h3>
+<p>The highest-value governance change was adding one line to the release checklist: <i>does this change any documented behaviour? If yes, name the articles.</i></p>
+<p>It costs the engineer thirty seconds and it converts content decay from something discovered by customers into something scheduled. It also fails occasionally, which is why the quarterly stale-article sweep exists as a backstop.</p>
+<h3>Definition of done for a new article</h3>
+<ul>
+  <li>Title is the question a customer would type.</li>
+  <li>It answers one question.</li>
+  <li>Mode is identified and the structure matches it.</li>
+  <li>Synonyms line added from search data.</li>
+  <li>Reviewed by one support agent who did not write it.</li>
+  <li>Linked from its category and from at most three related articles.</li>
+  <li>Owner and review date recorded.</li>
+</ul>
+
+<h2 id="s21"><span class="num">Section 21</span>Failure modes</h2>
+<p class="lede">What goes wrong in projects of this kind, with the early warning for each.</p>
+<h3>The restructure stalls at 60%</h3>
+<p><b>Cause.</b> Scoped as one large project rather than sequenced by demand. Enthusiasm and budget run out before the long tail is finished, and the help centre is left visibly inconsistent.</p>
+<p><b>Early warning.</b> No articles shipped in a fortnight.</p>
+<p><b>Prevention.</b> Phase by ticket volume as in Section 5. Each phase is independently valuable and leaves a coherent result.</p>
+<h3>The new structure is overruled in review</h3>
+<p><b>Cause.</b> A senior stakeholder prefers a structure that mirrors the product. The argument is aesthetic and the counter-argument is data, so bring the data.</p>
+<p><b>Early warning.</b> Phrases like "it should match how the product is organised" in the first review.</p>
+<p><b>Prevention.</b> Lead every structural proposal with the ticket distribution that produced it. "These six categories cover 77% of contacts, in the words customers used" is harder to overrule than a preference.</p>
+<h3>Deflection improves and nobody believes it</h3>
+<p><b>Cause.</b> No agreed baseline, or a definition that changed mid-project.</p>
+<p><b>Early warning.</b> Nobody can state the current deflection rate when asked in week one.</p>
+<p><b>Prevention.</b> Agree the formula and compute the baseline before changing anything. Put it in writing. This takes a day and prevents the entire result being disputed.</p>
+<h3>Traffic drops after launch and the project is declared a failure</h3>
+<p><b>Cause.</b> Normal reindexing after a URL change, misread as a content problem.</p>
+<p><b>Prevention.</b> Warn in advance, in writing, with the expected duration. Section 14.</p>
+<h3>The content decays again</h3>
+<p><b>Cause.</b> No named owner with allocated time.</p>
+<p><b>Early warning.</b> Freshness metric falling, three months after launch.</p>
+<p><b>Prevention.</b> Section 20. This is the failure mode that makes the work worth doing twice, which is to say the most expensive one.</p>
+<h3>Articles are rewritten but keep their old titles</h3>
+<p><b>Cause.</b> Rewriting feels like the work; retitling feels cosmetic. It is the opposite.</p>
+<p><b>Early warning.</b> Search success rate flat after a batch of rewrites.</p>
+<p><b>Prevention.</b> Make the title a gate in the definition of done.</p>
+
+<h2 id="s22"><span class="num">Section 22</span>Stakeholders</h2>
+<p class="lede">The technical work is the easy part. This section is what the engagement actually required day to day.</p>
+<table>
+  <tr><th>Stakeholder</th><th>Cares about</th><th>Will resist</th><th>Bring them</th></tr>
+  <tr><td>Head of support</td><td>Ticket volume and agent time</td><td>Nothing. This is their project.</td><td>Ticket reduction by category, per 100 customers</td></tr>
+  <tr><td>Support agents</td><td>Not answering the same question daily</td><td>Being asked to write, if it is unpaid extra work</td><td>A one-click flag route and visible action on what they flag</td></tr>
+  <tr><td>Product</td><td>Features being described correctly</td><td>A new release checklist item</td><td>The count of tickets caused by undocumented changes</td></tr>
+  <tr><td>Marketing</td><td>Organic traffic and brand voice</td><td>URL changes, and plain language that sounds less polished</td><td>The redirect plan, and search ranking retained</td></tr>
+  <tr><td>Finance</td><td>Support cost per customer</td><td>The project cost</td><td>Cost per ticket multiplied by tickets avoided</td></tr>
+  <tr><td>Legal or compliance</td><td>Accuracy of policy statements</td><td>Plain-language rewrites of policy content</td><td>Review rights on the specific articles that state obligations</td></tr>
+</table>
+<h3>The two difficult conversations</h3>
+<p><b>Marketing on plain language.</b> "Your data stays available for 30 days, then it is deleted permanently" will be described as blunt. It is blunt, and it is the sentence that prevents an angry ticket on day 31. The argument that works is not stylistic; it is that vagueness on this subject generates contacts, and here is the ticket count.</p>
+<p><b>Legal on cancellation content.</b> Legal review of a cancellation article tends to add hedging that makes it unusable. The productive framing is to separate the two jobs: legal owns the statements of obligation, content owns the order and the plainness. Give them approval over the former and not the latter, agreed in advance.</p>
+<h3>What to report, and how often</h3>
+<p>Fortnightly, one page, three numbers: articles shipped, tickets in the categories already covered, and deflection rate. No narrative unless something changed.</p>
+<p>Resist reporting effort. "We audited 340 articles" is an input. Nobody outside the project cares, and leading with inputs invites questions about whether the inputs were necessary.</p>
+
+<h2 id="s23"><span class="num">Section 23</span>Timeline and effort</h2>
+<p class="lede">Actual effort for the engagement described, as a planning reference. One content strategist, part-time support team involvement.</p>
+<table>
+  <tr><th>Phase</th><th>Duration</th><th>Effort</th><th>Output</th></tr>
+  <tr><td>Data gathering</td><td>Week 1</td><td>4 days</td><td>Six datasets assembled, 400 tickets hand-coded</td></tr>
+  <tr><td>Inventory and audit</td><td>Weeks 2–3</td><td>7 days</td><td>340 articles scored, dispositions assigned</td></tr>
+  <tr><td>Quick wins</td><td>Week 2, parallel</td><td>1 day</td><td>14 wrong articles fixed. Buys credibility.</td></tr>
+  <tr><td>Architecture design</td><td>Week 4</td><td>3 days</td><td>Category structure, reviewed and agreed</td></tr>
+  <tr><td>Standards and templates</td><td>Week 4</td><td>2 days</td><td>Style guide, four templates</td></tr>
+  <tr><td>Writing, phase 1</td><td>Weeks 5–10</td><td>24 days</td><td>64 articles covering the top six categories</td></tr>
+  <tr><td>Review and revision</td><td>Weeks 9–11</td><td>4 days</td><td>Agent review, fixes</td></tr>
+  <tr><td>Migration</td><td>Week 11</td><td>3 days</td><td>Redirect map, launch, monitoring</td></tr>
+  <tr><td>Measurement setup</td><td>Weeks 3 and 12</td><td>3 days</td><td>Baseline, then dashboard</td></tr>
+  <tr><td>Handover</td><td>Week 12</td><td>2 days</td><td>Governance model, training</td></tr>
+  <tr><td><b>Total</b></td><td><b>12 weeks</b></td><td><b>53 days</b></td><td></td></tr>
+</table>
+<h3>Notes on the estimate</h3>
+<p><b>Writing is 45% of the effort</b> and it is the part most often underestimated, usually by assuming an article takes an hour. At this standard, with research and a worked example, a good article takes two to four hours including review.</p>
+<p><b>Data gathering ran long.</b> Budgeted at two days, took four, because the session-to-ticket join did not exist and had to be built. Assume this unless you have seen it working.</p>
+<p><b>The support team contributed about 8 days</b> across interviews, review and the agent feedback loop. Budget it explicitly or it comes out of their ticket queue and generates resentment.</p>
+<h3>What a smaller version looks like</h3>
+<p>Not every organisation can fund twelve weeks. A four-week version that captures a worthwhile share of the benefit:</p>
+<ul>
+  <li>Week 1: ticket data and zero-result searches only. Skip the full inventory.</li>
+  <li>Week 2: fix wrong articles, add synonym lines to the top 40 articles, retitle them as questions.</li>
+  <li>Week 3: write the five missing diagnosis articles for the highest-volume symptoms.</li>
+  <li>Week 4: measurement baseline and governance.</li>
+</ul>
+<p>No restructure, no migration, no redirects. Retitling and synonyms alone closed a large share of the search failures in the full project, and the diagnosis articles were the highest-return content. This version delivers both and defers everything else.</p>
+
+<h2 id="s24"><span class="num">Section 24</span>What I would do differently</h2>
+<p class="lede">Three things that cost time or quality, recorded because the method improves by writing them down.</p>
+<h3>Build the session-to-ticket join first</h3>
+<p>It was treated as one dataset among six and turned out to be the one that made the argument. The per-article follow-on rate is what converted "these articles are bad" from an opinion into a ranked work queue, and it is what the head of support actually responded to.</p>
+<p>Next time it is the first thing built, in week one, before the inventory. Everything else is easier once it exists.</p>
+<h3>Write the diagnosis articles before the restructure</h3>
+<p>Eighteen diagnosis articles were missing and they covered 34% of ticket volume. They were written in the main writing phase, in weeks 5 to 10, because they were part of the overall plan.</p>
+<p>They did not depend on the restructure. They could have shipped in week 3 into the old structure and started reducing tickets six weeks earlier. Sequencing by dependency rather than by tidiness would have delivered the same benefit sooner.</p>
+<h3>Agree the deflection formula in writing, in week one</h3>
+<p>It was agreed verbally in week three and recomputed twice because two people had different windows in mind. The second recomputation happened during the final review, which is the worst possible moment to discover that the headline number is contested.</p>
+<p>One paragraph, signed off, before any measurement: the formula, the window, what counts as a resolution, and what the baseline is. It takes an hour and it protects the entire result.</p>
+<h3>One thing that worked better than expected</h3>
+<p>Fixing the fourteen wrong articles in week two, before anything else. It cost a day, it visibly helped the support team immediately, and it meant that when the structural proposal arrived in week four it came from someone who had already delivered something. Projects of this kind are approved on evidence and sustained on trust, and the cheap early win generates the second.</p>
+
+<h2 id="a1"><span class="num">Appendix A</span>Audit rubric</h2>
+<table>
+  <tr><th>Dimension</th><th>Score 0</th><th>Score 1</th><th>Score 2</th></tr>
+  <tr><td>Title</td><td>Feature or topic name</td><td>Descriptive but not a question</td><td>The question a customer would type</td></tr>
+  <tr><td>Focus</td><td>3 or more questions</td><td>2 questions</td><td>1 question</td></tr>
+  <tr><td>Mode</td><td>Two or more modes mixed</td><td>Mostly one mode</td><td>Single, clearly identified mode</td></tr>
+  <tr><td>Opening</td><td>Preamble or definition</td><td>Context then answer</td><td>Answer or first step immediately</td></tr>
+  <tr><td>Vocabulary</td><td>Internal terms throughout</td><td>Mixed</td><td>Customer vocabulary, synonyms present</td></tr>
+  <tr><td>Accuracy</td><td>Describes behaviour that no longer exists</td><td>Broadly right, details stale</td><td>Matches the product today</td></tr>
+  <tr><td>Exit</td><td>Ends without a route out</td><td>Generic contact link</td><td>Names what to send support, and what to try next</td></tr>
+  <tr><td>Length</td><td>Over 1,000 words</td><td>600 to 1,000</td><td>Under 600, or justified by mode</td></tr>
+</table>
+<p>Score out of 16. Below 8 is a rewrite; 8 to 12 is an update; above 12 is a keep. Apply the structural rules from Section 5 first, because an article answering four questions is a split regardless of how well it is written.</p>
+
+<h2 id="a2"><span class="num">Appendix B</span>Article templates</h2>
+<h3>How-to</h3>
+<pre><code># How do I [task]?
+
+[First step. No preamble, no definition of the feature.]
+
+1. Go to **Settings → [Area]**.
+2. [One action per step.]
+3. [Final action and what confirms it worked.]
+
+**If it didn't work**
+[The one or two most common causes, with the fix.]
+
+*Also searched as: [synonyms from search data]*</code></pre>
+<h3>Diagnosis</h3>
+<pre><code># [Symptom, in the customer's words]
+
+Work through these in order. Each rules something out, so don't skip
+ahead. [Name which step is most often the answer.]
+
+**1. [Check that confirms the problem is real]**
+[What to look at, and what each outcome means. Branch explicitly.]
+
+**2. [Check that eliminates the most common cause]**
+...
+
+**Still stuck?**
+Send us [the exact artefact: a run ID, an invoice number, a screenshot
+of a specific screen]. With it we can [what it enables] in [time].
+
+*Also searched as: ...*</code></pre>
+<h3>Explanation</h3>
+<pre><code># [Question]
+
+**Short answer.** [One or two sentences. The whole answer for most
+readers.]
+
+**[The detail]**
+[Expansion. Where numbers are involved, show a worked example with
+real arithmetic.]
+
+**[The edge case]**
+[The exception that generates tickets if unstated.]
+
+**If this doesn't match what you're seeing**
+[Route out, with what to send.]
+
+*Also searched as: ...*</code></pre>
+<h3>Reference</h3>
+<pre><code># [Noun phrase]
+
+[Table. No introduction.]
+
+| Column | Column | Column |
+|---|---|---|
+
+[Footnotes only where a value needs qualification.]</code></pre>
+
+<h2 id="a3"><span class="num">Appendix C</span>Metric definitions</h2>
+<table>
+  <tr><th>Metric</th><th>Definition</th><th>Window</th><th>Notes</th></tr>
+  <tr><td>Deflection rate</td><td>Self-service resolutions ÷ (resolutions + tickets)</td><td>Monthly</td><td>Denominator is total demand. Report explicit and implicit separately.</td></tr>
+  <tr><td>Self-service resolution, explicit</td><td>Session with a positive confirmation signal</td><td>Per session</td><td>Conservative floor</td></tr>
+  <tr><td>Self-service resolution, implicit</td><td>Search or view with no ticket from the same person within 24h</td><td>24h</td><td>Needs the reopened guardrail</td></tr>
+  <tr><td>Reopened-as-ticket rate</td><td>Deflected sessions followed by a ticket on the same subject</td><td>7 days</td><td>Primary guardrail. Longer window than the deflection window, deliberately.</td></tr>
+  <tr><td>Search success rate</td><td>Searches with at least one result click ÷ searches</td><td>Monthly</td><td>Measures titles, not content</td></tr>
+  <tr><td>Zero-result rate</td><td>Searches returning no results ÷ searches</td><td>Monthly</td><td>Work queue, not just a metric</td></tr>
+  <tr><td>Article follow-on rate</td><td>Tickets within 30 min of view ÷ views</td><td>30 days, per article</td><td>Rank by absolute count, not rate</td></tr>
+  <tr><td>Content freshness</td><td>Articles reviewed in last 12 months ÷ total</td><td>Quarterly</td><td>Governance health</td></tr>
+  <tr><td>Tickets per 100 customers</td><td>Tickets ÷ (customers ÷ 100)</td><td>Monthly</td><td>Normalised. The business outcome.</td></tr>
+</table>
+
+<h2 id="a4"><span class="num">Appendix D</span>Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td>Deflection</td><td>A support contact prevented because the customer resolved their issue through self-service. Not the same as an article view.</td></tr>
+  <tr><td>Diagnosis article</td><td>A page for a reader who knows the symptom but not the cause, structured as elimination rather than instruction.</td></tr>
+  <tr><td>Diátaxis</td><td>A public documentation framework identifying four modes: tutorials, how-to guides, reference and explanation.</td></tr>
+  <tr><td>Disposition</td><td>The decision taken about an audited article: keep, update, rewrite, split or retire.</td></tr>
+  <tr><td>False deflection</td><td>A session counted as resolved that was actually an abandonment or a delayed contact.</td></tr>
+  <tr><td>Follow-on rate</td><td>Share of article views followed by a ticket within a short window. The strongest per-article failure signal.</td></tr>
+  <tr><td>Mode</td><td>Which of the content types a page is. Mixing modes in one page is the most common structural fault.</td></tr>
+  <tr><td>Question title</td><td>An article title phrased as the question a customer would type, rather than as a topic.</td></tr>
+  <tr><td>Search equity</td><td>Accumulated search ranking attached to a URL. Transferred by a permanent redirect; lost by deletion.</td></tr>
+  <tr><td>Zero-result search</td><td>A search returning nothing. Simultaneously a content gap and a vocabulary guide.</td></tr>
+</table>
+
+<h2 id="a5"><span class="num">Appendix E</span>Ticket coding scheme</h2>
+<p>Four hundred tickets were hand-coded to produce the demand picture in Sections 3 and 5. The scheme below is the one used. It is deliberately small, because a taxonomy with thirty codes cannot be applied consistently by two people in an afternoon, and consistency matters more than resolution.</p>
+<h3>Dimension 1: subject</h3>
+<p>One code per ticket, assigned by what the customer wanted, not by which team resolved it. Where a ticket covered two subjects, the first one raised was coded and the second noted in a free-text field.</p>
+<table>
+  <tr><th>Code</th><th>Covers</th><th>Share of sample</th></tr>
+  <tr><td>BILL-CHARGE</td><td>Unexpected or unclear charge, proration, invoice questions</td><td>13%</td></tr>
+  <tr><td>BILL-ADMIN</td><td>Plan changes, payment method, cancellation, receipts</td><td>9%</td></tr>
+  <tr><td>DATA-IN</td><td>Connecting a source, failed imports, mapping fields</td><td>18%</td></tr>
+  <tr><td>DATA-STALE</td><td>Data present but not current, sync not running</td><td>8%</td></tr>
+  <tr><td>BROKEN</td><td>Error messages, blank screens, unexpected behaviour</td><td>14%</td></tr>
+  <tr><td>ACCESS</td><td>Invitations, permissions, roles, sign-in</td><td>9%</td></tr>
+  <tr><td>EXPORT</td><td>Reports, scheduled exports, format questions</td><td>8%</td></tr>
+  <tr><td>SETTINGS</td><td>Account settings, notifications, profile</td><td>6%</td></tr>
+  <tr><td>OTHER</td><td>Everything else, including sales and feature requests</td><td>15%</td></tr>
+</table>
+<h3>Dimension 2: documentability</h3>
+<p>The dimension that produced the content work queue. Assigned independently of subject.</p>
+<table>
+  <tr><th>Code</th><th>Meaning</th><th>Share</th><th>Action</th></tr>
+  <tr><td>DOC-EXISTS</td><td>An article answers this and the customer did not find or did not use it</td><td>31%</td><td>Findability or quality problem. Retitle, add synonyms, check the follow-on rate.</td></tr>
+  <tr><td>DOC-PARTIAL</td><td>An article covers part of it, or covers it inside a larger page</td><td>24%</td><td>Split or extend. The largest single bucket of writing work.</td></tr>
+  <tr><td>DOC-MISSING</td><td>Nothing covers it and something could</td><td>22%</td><td>Write it. Ranked by subject volume.</td></tr>
+  <tr><td>DOC-WRONG</td><td>An article covers it and is incorrect</td><td>4%</td><td>Fix immediately, ahead of all other work.</td></tr>
+  <tr><td>NOT-DOC</td><td>Requires account access, a human decision, or a product change</td><td>19%</td><td>Out of scope for content. Route cleanly instead of deflecting.</td></tr>
+</table>
+<p>The 19% in NOT-DOC is the ceiling on what content can achieve, and stating it early protects the project from being measured against 100%. It also identifies the articles whose job is to route rather than to answer, which changes how they are written.</p>
+<h3>Dimension 3: mode required</h3>
+<p>Which kind of article would have answered the question. This is the dimension that surfaced the missing diagnosis mode in Section 7.</p>
+<table>
+  <tr><th>Code</th><th>Share of documentable tickets</th></tr>
+  <tr><td>How-to</td><td>35%</td></tr>
+  <tr><td>Diagnosis</td><td>34%</td></tr>
+  <tr><td>Explanation</td><td>19%</td></tr>
+  <tr><td>Reference</td><td>11%</td></tr>
+  <tr><td>Tutorial</td><td>1%</td></tr>
+</table>
+<h3>Coding notes</h3>
+<ul>
+  <li><b>Two coders, overlapping sample.</b> Fifty tickets were coded by both. Agreement on subject was high; agreement on documentability was not, and the disagreements were all between DOC-EXISTS and DOC-PARTIAL. The rule adopted: if the answer required the customer to read past the question they came with, it is DOC-PARTIAL.</li>
+  <li><b>Sample, not census.</b> Four hundred of roughly 2,100 monthly tickets, drawn across four weeks to avoid a single release skewing the picture. Proportions are reported to the nearest whole percent and should not be read more precisely than that.</li>
+  <li><b>Code the question, not the resolution.</b> A ticket resolved by an agent sending an article is still DOC-EXISTS, and the interesting question is why the customer did not find it.</li>
+</ul>
+
+<h2 id="a6"><span class="num">Appendix F</span>The article set</h2>
+<p>All 64 articles in the restructured help centre, with mode. Titles are as published. Billing is shown first because it is the highest-volume category, and three of its articles are written out in full in Sections 10 and 11.</p>
+<h3>Billing and payments, 14 articles</h3>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>Why was I charged this amount?</td><td>Explanation</td></tr>
+  <tr><td>Why was I charged twice?</td><td>Diagnosis</td></tr>
+  <tr><td>When am I billed, and for what period?</td><td>Explanation</td></tr>
+  <tr><td>How do I change my plan?</td><td>How-to</td></tr>
+  <tr><td>What happens when I change plans mid-month?</td><td>Explanation</td></tr>
+  <tr><td>How do I cancel?</td><td>How-to</td></tr>
+  <tr><td>What happens to my data after I cancel?</td><td>Explanation</td></tr>
+  <tr><td>How do I update my payment method?</td><td>How-to</td></tr>
+  <tr><td>My payment failed. What now?</td><td>Diagnosis</td></tr>
+  <tr><td>How do I get a receipt or invoice?</td><td>How-to</td></tr>
+  <tr><td>How do I add a VAT or tax number?</td><td>How-to</td></tr>
+  <tr><td>Can I get a refund?</td><td>Explanation</td></tr>
+  <tr><td>What is included in each plan?</td><td>Reference</td></tr>
+  <tr><td>Who can see and change billing settings?</td><td>Reference</td></tr>
+</table>
+<h3>Getting your data in, 16 articles</h3>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>Which sources can I connect?</td><td>Reference</td></tr>
+  <tr><td>How do I connect a new source?</td><td>How-to</td></tr>
+  <tr><td>My connection failed during setup</td><td>Diagnosis</td></tr>
+  <tr><td>My import finished but rows are missing</td><td>Diagnosis</td></tr>
+  <tr><td>How do I map fields from my source?</td><td>How-to</td></tr>
+  <tr><td>Why do some fields not appear?</td><td>Diagnosis</td></tr>
+  <tr><td>What file formats can I upload?</td><td>Reference</td></tr>
+  <tr><td>My upload was rejected</td><td>Diagnosis</td></tr>
+  <tr><td>How often does data sync?</td><td>Explanation</td></tr>
+  <tr><td>How do I change the sync schedule?</td><td>How-to</td></tr>
+  <tr><td>How do I disconnect a source?</td><td>How-to</td></tr>
+  <tr><td>What happens to data when I disconnect?</td><td>Explanation</td></tr>
+  <tr><td>How are duplicate records handled?</td><td>Explanation</td></tr>
+  <tr><td>What are the import size limits?</td><td>Reference</td></tr>
+  <tr><td>How do I reconnect a source that expired?</td><td>How-to</td></tr>
+  <tr><td>Import error codes</td><td>Reference</td></tr>
+</table>
+<h3>Something isn't working, 11 articles</h3>
+<p>Every article in this category is a diagnosis article. The category exists because 34% of documentable tickets needed this mode and three such articles existed.</p>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>My data hasn't updated</td><td>Diagnosis</td></tr>
+  <tr><td>I can't sign in</td><td>Diagnosis</td></tr>
+  <tr><td>The page is blank or won't load</td><td>Diagnosis</td></tr>
+  <tr><td>My numbers don't match my source system</td><td>Diagnosis</td></tr>
+  <tr><td>My report is empty</td><td>Diagnosis</td></tr>
+  <tr><td>My scheduled export didn't arrive</td><td>Diagnosis</td></tr>
+  <tr><td>I'm not receiving email notifications</td><td>Diagnosis</td></tr>
+  <tr><td>A teammate can't see what I can see</td><td>Diagnosis</td></tr>
+  <tr><td>Something is slower than usual</td><td>Diagnosis</td></tr>
+  <tr><td>I'm seeing an error message</td><td>Diagnosis</td></tr>
+  <tr><td>Something changed and I don't know why</td><td>Diagnosis</td></tr>
+</table>
+<h3>Your team and access, 8 articles</h3>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>How do I add someone to my team?</td><td>How-to</td></tr>
+  <tr><td>What can each role do?</td><td>Reference</td></tr>
+  <tr><td>How do I change someone's role?</td><td>How-to</td></tr>
+  <tr><td>How do I remove someone?</td><td>How-to</td></tr>
+  <tr><td>My invitation wasn't received</td><td>Diagnosis</td></tr>
+  <tr><td>How do I transfer account ownership?</td><td>How-to</td></tr>
+  <tr><td>How do I set up single sign-on?</td><td>How-to</td></tr>
+  <tr><td>Does adding someone change my bill?</td><td>Explanation</td></tr>
+</table>
+<h3>Reports and exports, 7 articles</h3>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>How do I build a report?</td><td>How-to</td></tr>
+  <tr><td>How do I export my data?</td><td>How-to</td></tr>
+  <tr><td>Which export formats are available?</td><td>Reference</td></tr>
+  <tr><td>How do I schedule a recurring export?</td><td>How-to</td></tr>
+  <tr><td>How do I share a report with someone?</td><td>How-to</td></tr>
+  <tr><td>Why are my totals different from last month?</td><td>Explanation</td></tr>
+  <tr><td>What are the export row limits?</td><td>Reference</td></tr>
+</table>
+<h3>Account and settings, 5 articles</h3>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>How do I change my email address?</td><td>How-to</td></tr>
+  <tr><td>How do I reset my password?</td><td>How-to</td></tr>
+  <tr><td>How do I turn on two-factor authentication?</td><td>How-to</td></tr>
+  <tr><td>Which notifications can I control?</td><td>Reference</td></tr>
+  <tr><td>How do I delete my account?</td><td>How-to</td></tr>
+</table>
+<h3>Everything else, 3 articles</h3>
+<p>Deliberately thin. The long tail accounted for 23% of tickets and almost none of it was documentable at useful volume. These three articles route rather than answer, which is a legitimate job for an article and is written as such.</p>
+<table>
+  <tr><th>Title</th><th>Mode</th></tr>
+  <tr><td>How do I contact support, and what should I send?</td><td>Reference</td></tr>
+  <tr><td>How do I request a feature?</td><td>How-to</td></tr>
+  <tr><td>Where do I find security and compliance information?</td><td>Reference</td></tr>
+</table>
+<h3>Distribution check</h3>
+<table>
+  <tr><th>Mode</th><th>Articles</th><th>Share</th><th>Share of documentable tickets</th></tr>
+  <tr><td>How-to</td><td>23</td><td>36%</td><td>35%</td></tr>
+  <tr><td>Diagnosis</td><td>19</td><td>30%</td><td>34%</td></tr>
+  <tr><td>Explanation</td><td>11</td><td>17%</td><td>19%</td></tr>
+  <tr><td>Reference</td><td>11</td><td>17%</td><td>11%</td></tr>
+  <tr><td>Tutorial</td><td>0</td><td>0%</td><td>1%</td></tr>
+</table>
+<p>The point of this table is that it was checked. A content set whose mode distribution does not resemble its demand distribution is answering a question nobody asked, and the only way to know is to count both. Reference is over-represented by six points, which is acceptable: reference articles are cheap to write and cheap to maintain. Tutorials are absent because the one tutorial-shaped need belonged in onboarding, not in a help centre, and was handed to the product team.</p>
+
+<h2 id="a7"><span class="num">Appendix G</span>Discovery interview guide</h2>
+<p>Nine support staff were interviewed, 40 minutes each, in week one. The guide below is what was used. It is short on purpose: the aim is to get agents talking about specific tickets rather than giving opinions about content in general.</p>
+<h3>Opening, 5 minutes</h3>
+<ul>
+  <li>What did you work on yesterday? Walk me through two or three tickets.</li>
+  <li>Which of those have you answered before?</li>
+</ul>
+<p>Starting with yesterday rather than with "what are the common questions" produces specifics. Agents asked the general question give the answer they think is expected. Agents asked about yesterday describe what actually happened.</p>
+<h3>The repeated questions, 10 minutes</h3>
+<ul>
+  <li>What do you answer most often?</li>
+  <li>For each one: is there an article? Do you send it? Does it work?</li>
+  <li>What do you type out by hand because no article covers it?</li>
+  <li>Do you keep your own notes or snippets? Can I see them?</li>
+</ul>
+<p>The last question is the highest-yield in the guide. Agents' personal snippet files are an unmaintained, battle-tested knowledge base written in the right register, and in this engagement they supplied the first drafts of six articles. They also reveal exactly where the public content fails, because a snippet exists precisely where an article does not.</p>
+<h3>The articles that misfire, 10 minutes</h3>
+<ul>
+  <li>Is there an article you have stopped sending? Why?</li>
+  <li>Is there anything published that is wrong?</li>
+  <li>When a customer has read an article and is still stuck, what is usually missing?</li>
+</ul>
+<p>The second question found all fourteen wrong articles in a single afternoon. Agents know. Nobody had asked them.</p>
+<h3>Language, 10 minutes</h3>
+<ul>
+  <li>What do customers call this feature? What do we call it?</li>
+  <li>Are there words we use that customers do not recognise?</li>
+  <li>When you explain the billing cycle, what words do you use?</li>
+</ul>
+<p>This is where the synonym data in Section 13 came from, alongside the search logs. The third question is worth asking of every agent separately, because the answers differ, and the one that recurs is the one to publish.</p>
+<h3>Closing, 5 minutes</h3>
+<ul>
+  <li>If you could have one article written this week, what would it be?</li>
+  <li>If you spot a content problem next month, how would you tell someone?</li>
+</ul>
+<p>The first question is a prioritisation signal and the answers clustered tightly, which was corroborating evidence for the ticket data. The second question is not really a question. It establishes that the feedback route in Section 20 is something they were consulted on, which is most of why it gets used.</p>
+<h3>What not to ask</h3>
+<ul>
+  <li><b>"How should the help centre be organised?"</b> Agents navigate by search and muscle memory and have no useful view on information architecture. Asking invites a structure derived from the internal product taxonomy, which is the structure being replaced.</li>
+  <li><b>"Would you be willing to write articles?"</b> Not in a discovery interview. It converts a conversation about problems into a negotiation about workload, and the answer is shaped by what they think the right answer is.</li>
+  <li><b>Anything answerable from the ticket data.</b> Interview time is scarce and should be spent on what the data cannot show: why a customer did not use the article, what the agent typed instead, which words they chose.</li>
+</ul>
+
+</article>
+</div>
+
+<footer><div class="foot">
+  <p><b>Asim Raza</b> · Technical Content Writer · <a href="mailto:asim74726@gmail.com">asim74726@gmail.com</a> · <a href="https://www.linkedin.com/in/asim-raza18a">LinkedIn</a></p>
+  <p><a href="index.html">← Back to the full portfolio</a></p>
+  <p class="fine">This document is an original writing sample by Asim Raza, produced to demonstrate content strategy practice. The client, product, article set and all figures are invented for illustration. Frameworks and measurement definitions cited are publicly documented and are named for verifiability; nothing here is affiliated with or endorsed by any organisation mentioned. All trademarks are the property of their respective owners.</p>
+</div></footer>
+
+</body>
+</html>

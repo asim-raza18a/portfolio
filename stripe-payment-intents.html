@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrating Stripe Payment Intents, Implementation Guide | Asim Raza</title>
+<style>
+:root{
+  --ink:#15191c; --ink-2:#434a52; --ink-3:#6f7880;
+  --line:#e4e1da; --line-2:#efece5;
+  --paper:#fdfcfa; --paper-2:#f8f6f1; --paper-3:#f2efe8;
+  --doc-bg:#fffefc; --doc-line:#e7e3da;
+  --accent:#176b5d; --accent-soft:#e4efec; --accent-line:#bcd8d1;
+  --gold:#8f6418; --gold-soft:#fbf3e3; --gold-line:#ecdcbb;
+  --red:#8c2f22; --red-soft:#fbeeec; --red-line:#eecfc9;
+  --code-bg:#1a1f24; --code-fg:#e4e8ee;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ink:#e9e7e2; --ink-2:#b2aea6; --ink-3:#857f76;
+    --line:#2b3036; --line-2:#242930;
+    --paper:#15181c; --paper-2:#1a1e23; --paper-3:#20252b;
+    --doc-bg:#191d22; --doc-line:#2b3036;
+    --accent:#63baa9; --accent-soft:#16302b; --accent-line:#255349;
+    --gold:#d9ac63; --gold-soft:#2a2316; --gold-line:#4a3c22;
+    --red:#e0897c; --red-soft:#2d1a17; --red-line:#4d2b25;
+    --code-bg:#0f1317; --code-fg:#dbe1e8;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.72;-webkit-font-smoothing:antialiased}
+
+.topbar{border-bottom:1px solid var(--line);background:var(--paper-2);font-family:var(--sans);font-size:13.5px}
+.topbar div{max-width:1240px;margin:0 auto;padding:11px 32px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--ink-3)}
+.topbar a{color:var(--accent);text-decoration:none}
+
+.cover{border-bottom:1px solid var(--line)}
+.cover-in{max-width:1240px;margin:0 auto;padding:56px 32px 42px}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 16px}
+h1{font-size:44px;line-height:1.12;margin:0 0 12px;font-weight:600;letter-spacing:-.015em;max-width:860px}
+.sub{font-family:var(--sans);font-size:19px;color:var(--ink-2);margin:0 0 28px;max-width:700px;line-height:1.5}
+.facts{font-family:var(--sans);font-size:13.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:8px 28px;border-top:1px solid var(--line-2);padding-top:20px}
+.facts b{color:var(--ink);font-weight:650}
+
+.note{background:var(--gold-soft);border-top:1px solid var(--gold-line);border-bottom:1px solid var(--gold-line);font-family:var(--sans)}
+.note p{max-width:1240px;margin:0 auto;padding:14px 32px;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.note b{color:var(--gold)}
+
+.wrap{max-width:1240px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:260px 1fr;gap:56px;align-items:start}
+.toc{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:36px 0;font-family:var(--sans);font-size:13.5px}
+.toc p.t{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 12px}
+.toc a{display:block;padding:5px 10px;border-radius:6px;color:var(--ink-2);text-decoration:none;line-height:1.4}
+.toc a:hover{background:var(--paper-3);color:var(--ink)}
+.toc a.app{color:var(--ink-3);font-size:13px}
+.toc .grp{margin-top:14px;padding-top:10px;border-top:1px solid var(--line-2)}
+
+article{padding:36px 0 100px;min-width:0;max-width:820px}
+h2{font-size:30px;margin:52px 0 6px;font-weight:600;letter-spacing:-.012em;scroll-margin-top:16px;padding-top:18px;border-top:2px solid var(--accent)}
+h2:first-child{margin-top:0}
+h2 .num{font-family:var(--sans);font-size:13px;color:var(--accent);display:block;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+h3{font-family:var(--sans);font-size:20px;margin:34px 0 10px;font-weight:650;letter-spacing:-.008em;scroll-margin-top:16px}
+h4{font-family:var(--sans);font-size:16px;margin:26px 0 8px;font-weight:650}
+h5{font-family:var(--sans);font-size:12px;letter-spacing:.09em;text-transform:uppercase;margin:24px 0 8px;font-weight:700;color:var(--ink-3)}
+p{margin:0 0 16px}
+ul,ol{margin:0 0 16px;padding-left:24px}
+li{margin-bottom:8px}
+code{font-family:var(--mono);font-size:14px;background:var(--paper-3);padding:1.5px 5px;border-radius:4px;border:1px solid var(--line-2)}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.62;background:var(--code-bg);color:var(--code-fg);padding:18px 20px;border-radius:9px;overflow-x:auto;margin:0 0 18px}
+pre code{background:none;border:0;padding:0;color:inherit;font-size:13.5px}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:14.5px;margin:0 0 20px}
+th{text-align:left;border-bottom:2px solid var(--accent);padding:9px 12px 9px 0;font-weight:650;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+td{border-bottom:1px solid var(--line-2);padding:10px 12px 10px 0;vertical-align:top}
+blockquote{margin:0 0 18px;padding:14px 18px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-family:var(--sans);font-size:15.5px;color:var(--ink)}
+.warn{font-family:var(--sans);font-size:15px;background:var(--red-soft);border:1px solid var(--red-line);border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 18px}
+.warn b{color:var(--red)}
+.tip{font-family:var(--sans);font-size:15px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:8px;padding:14px 18px;margin:0 0 18px}
+.tip b{color:var(--gold)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+.lede{font-size:19px;color:var(--ink-2);line-height:1.62}
+footer{border-top:1px solid var(--line);background:var(--paper-2);font-family:var(--sans)}
+.foot{max-width:1240px;margin:0 auto;padding:40px 32px 54px;font-size:14px;color:var(--ink-2)}
+.foot a{color:var(--accent)}
+.foot .fine{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3);max-width:760px;line-height:1.6}
+@media (max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 20px}
+  .toc{position:static;max-height:none;padding:20px 0 0;border-bottom:1px solid var(--line)}
+  .cover-in{padding:36px 20px 28px}
+  h1{font-size:31px}
+  article{padding:26px 0 70px}
+  h2{font-size:25px}
+  .note p,.topbar div,.foot{padding-left:20px;padding-right:20px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div>
+  <span>Sample document · Asim Raza, Technical Content Writer</span>
+  <span><a href="index.html">← Back to portfolio</a></span>
+</div></div>
+
+<header class="cover"><div class="cover-in">
+  <p class="kicker">Implementation guide · Developer documentation</p>
+  <h1>Integrating Stripe Payment Intents</h1>
+  <p class="sub">A complete implementation guide for engineering teams building a custom payment flow, covering the lifecycle, authentication, idempotency, webhooks, reconciliation and the failure modes that reach production.</p>
+  <div class="facts">
+    <span><b>Audience</b> Backend and full-stack engineers</span>
+    <span><b>Assumed knowledge</b> REST APIs, HTTP, basic async patterns</span>
+    <span><b>Length</b> 22 sections, 4 appendices</span>
+    <span><b>Written</b> November 2026</span>
+  </div>
+</div></header>
+
+<div class="note"><p><b>About this sample.</b> This is a portfolio piece written to demonstrate technical documentation of a real, public API. It is not official Stripe documentation and it is not affiliated with or endorsed by Stripe. Stripe is named because its API is publicly documented and verifiable, which lets you check the accuracy of the writing against the source. Always confirm behaviour against <a href="https://docs.stripe.com" style="color:var(--gold)">docs.stripe.com</a> before shipping, because payment APIs change.</p></div>
+
+<div class="wrap">
+<nav class="toc">
+  <p class="t">Contents</p>
+  <a href="#s1">1. Who this is for</a>
+  <a href="#s2">2. Choosing your integration</a>
+  <a href="#s3">3. Core concepts</a>
+  <a href="#s4">4. The status lifecycle</a>
+  <a href="#s5">5. Creating a PaymentIntent</a>
+  <a href="#s6">6. Collecting payment details</a>
+  <a href="#s7">7. Confirmation flows</a>
+  <a href="#s8">8. Authentication and SCA</a>
+  <a href="#s9">9. Authorise now, capture later</a>
+  <a href="#s10">10. Idempotency</a>
+  <a href="#s11">11. Error handling</a>
+  <a href="#s12">12. Declines</a>
+  <a href="#s13">13. Webhooks</a>
+  <a href="#s14">14. Reconciliation</a>
+  <a href="#s15">15. Saving payment methods</a>
+  <a href="#s16">16. Refunds and cancellation</a>
+  <a href="#s17">17. Testing</a>
+  <a href="#s18">18. Going live</a>
+  <a href="#s19">19. Reference implementation</a>
+  <a href="#s20">20. Troubleshooting</a>
+  <a href="#s21">21. Multiple currencies</a>
+  <a href="#s22">22. Monitoring in production</a>
+  <div class="grp">
+    <a class="app" href="#a1">Appendix A · Status reference</a>
+    <a class="app" href="#a2">Appendix B · Error reference</a>
+    <a class="app" href="#a3">Appendix C · Event reference</a>
+    <a class="app" href="#a4">Appendix D · Glossary</a>
+  </div>
+</nav>
+
+<article>
+<h2 id="s1"><span class="num">Section 1</span>Who this is for</h2>
+<p class="lede">This guide is for an engineer who has been asked to build a payment flow and has decided, or been told, to build it with the Payment Intents API rather than a prebuilt checkout page.</p>
+<p>It assumes you are comfortable with REST APIs and HTTP. It does not assume you know anything about payments. Where a concept is specific to the card industry, such as authorisation versus capture, it is explained at the point you need it.</p>
+<p>The guide is written to be read in order the first time and used as a reference afterwards. Sections 1 to 8 are the path to a working payment. Sections 9 to 16 cover the parts that are easy to skip and expensive to skip. Sections 17 and 18 cover testing and launch.</p>
+<h3>What this guide covers that a quickstart does not</h3>
+<p>A quickstart gets you a successful test payment. That is useful, and it is roughly fifteen minutes of work. The gap between a successful test payment and a payment system you can run a business on is where most of the engineering effort actually goes. That gap is the subject of this guide.</p>
+<p>Specifically, it covers what happens when things do not go to plan. A customer closes the tab halfway through authentication. Your server times out after the charge succeeded but before you recorded it. A webhook arrives twice, or out of order, or six hours late. A card is declined for a reason you can retry and another that you must not. These are not edge cases. At any meaningful volume they happen every day, and the quality of your integration is determined almost entirely by how it handles them.</p>
+<h3>What you need before you start</h3>
+<ul>
+  <li>A Stripe account with access to a test environment. Test mode keys are prefixed <code>sk_test_</code> and live keys <code>sk_live_</code>.</li>
+  <li>A server you can run. The Payment Intents API requires a server. Your secret key must never reach the browser.</li>
+  <li>An HTTPS endpoint reachable from the internet for webhooks, or the Stripe CLI for local forwarding during development.</li>
+  <li>A decision about which payment methods you intend to accept, because it affects how you configure the integration. Section 2 covers this.</li>
+</ul>
+<h3>Conventions used here</h3>
+<table>
+  <tr><th>Convention</th><th>Meaning</th></tr>
+  <tr><td><code>monospace</code></td><td>A literal value, parameter name, field or status as it appears in the API.</td></tr>
+  <tr><td>Server-side</td><td>Code that runs on your server with your secret key. Never in the browser.</td></tr>
+  <tr><td>Client-side</td><td>Code that runs in the customer's browser or app, using your publishable key.</td></tr>
+  <tr><td>Minor units</td><td>Amounts are integers in the smallest currency unit. 2000 is £20.00 in GBP. Currencies without decimal subdivisions, such as JPY, are the exception.</td></tr>
+</table>
+<p>Code examples use Node.js and the official Stripe SDK. The concepts transfer directly to the other official libraries, and the parameter names are identical across all of them because they map onto the same HTTP API.</p>
+
+<h2 id="s2"><span class="num">Section 2</span>Choosing your integration before you write anything</h2>
+<p class="lede">Before building with Payment Intents directly, be sure it is the right choice. For a large share of integrations it is not, and the wrong choice here costs weeks that are hard to recover.</p>
+<p>Stripe offers several ways to take a payment, and they differ mainly in how much of the flow you own. Stripe's own current guidance recommends the Checkout Sessions API with the Payment Element for most integrations, rather than driving Payment Intents yourself. That recommendation is worth taking seriously, and this guide says so even though its subject is the harder path.</p>
+<h3>The three broad options</h3>
+<table>
+  <tr><th>Approach</th><th>You own</th><th>Stripe owns</th><th>Typical effort</th></tr>
+  <tr><td>Payment Links</td><td>A URL</td><td>Everything else, including the page</td><td>Minutes</td></tr>
+  <tr><td>Checkout Sessions with the Payment Element</td><td>Your product and pricing logic, your success page</td><td>The payment form, authentication flow, payment method rendering, localisation, and compliance with new network rules as they arrive</td><td>Days</td></tr>
+  <tr><td>Payment Intents directly</td><td>All of the above, plus the state machine</td><td>The payment rails</td><td>Weeks</td></tr>
+</table>
+<h3>When driving Payment Intents yourself is justified</h3>
+<ul>
+  <li><b>The payment step is embedded in a flow you fully control</b> and a redirect or hosted component is unacceptable for product reasons. Note that the Payment Element can be embedded, so "we want it on our own page" alone is not sufficient justification.</li>
+  <li><b>You need to authorise now and capture later</b> with your own business logic deciding when and how much to capture. Section 9 covers this.</li>
+  <li><b>Your checkout is not a checkout.</b> Payments triggered by an event in your system rather than by a customer clicking a button, such as usage settlement or scheduled billing, do not fit a hosted page.</li>
+  <li><b>You are building a platform</b> where the payment flow differs per merchant and must be configured programmatically.</li>
+</ul>
+<h3>When it is not justified</h3>
+<p>If your requirement is a checkout page that takes a card and charges it, you are very likely to spend several weeks reimplementing a solved problem, then spend more weeks maintaining it as payment method support and regulatory requirements change. The hosted components are updated for you when card network rules change. Your bespoke flow is not.</p>
+<div class="tip"><b>A useful test.</b> Write down the specific product requirement that the Payment Element cannot satisfy. If you cannot name one in a sentence, use the Payment Element. If you can, continue with this guide, and note the requirement somewhere, because in eighteen months someone will ask why the payment flow is bespoke and nobody will remember.</div>
+<p>The rest of this guide assumes you have made that decision deliberately.</p>
+
+<h2 id="s3"><span class="num">Section 3</span>Core concepts</h2>
+<p class="lede">Four objects and one secret account for most of what you need to understand. Getting these clear now saves a great deal of confusion later, because the API names are similar and the distinctions matter.</p>
+<h3>The PaymentIntent</h3>
+<p>A PaymentIntent represents your intention to collect a specific amount from a specific customer. It is created before you know whether the payment will succeed, and it persists through every attempt. If a card is declined and the customer tries another, that is the same PaymentIntent with a second attempt against it, not a new one.</p>
+<p>This is the single most important idea in the API. Older payment APIs, including Stripe's own earlier Charges API, modelled a payment as a single action that either worked or did not. Modern card payments are not like that. They can require a step from the customer partway through, they can complete minutes or hours later, and they can be attempted several times. The PaymentIntent exists to hold that state.</p>
+<p>A PaymentIntent creates at most one successful charge. That is a guarantee worth internalising, because it is what makes the object safe to retry against.</p>
+<h3>The PaymentMethod</h3>
+<p>A PaymentMethod represents the instrument being used, such as a specific card or a bank account. It is a separate object from the PaymentIntent. You attach a PaymentMethod to a PaymentIntent in order to attempt payment with it.</p>
+<p>PaymentMethods can be created on the client, which is how card details avoid touching your server. They can also be saved to a Customer for later use, which Section 15 covers.</p>
+<h3>The Customer</h3>
+<p>A Customer object groups payment methods, payments and subscriptions under one record. It is optional for a one-off payment and necessary for anything involving saved cards or recurring billing.</p>
+<p>Create the Customer before the first payment if you expect any repeat relationship. Associating payments retrospectively is possible but tedious, and the Customer record is where saved payment methods live.</p>
+<h3>The Charge</h3>
+<p>When a PaymentIntent succeeds it produces a Charge. The Charge holds the record of the actual money movement, including the balance transaction, the fee breakdown and the receipt. The PaymentIntent exposes the most recent one as <code>latest_charge</code>.</p>
+<p>You rarely create Charges directly in a modern integration. You will read them when you need fee details, receipt URLs, or the full history of attempts against a payment. To see every attempt including the failures, list charges filtered by the <code>payment_intent</code> parameter rather than reading <code>latest_charge</code>.</p>
+<h3>The client secret</h3>
+<p>Every PaymentIntent has a <code>client_secret</code>. This string lets client-side code act on that one PaymentIntent, and only that one. You pass it to the browser so that Stripe.js can confirm the payment and handle any authentication step.</p>
+<div class="warn"><b>Handle the client secret carefully.</b> It is not as dangerous as your secret key, but it is not public either. Anyone holding it can see the PaymentIntent's details and attempt to confirm it. Return it only to the authenticated customer the payment belongs to, send it over HTTPS, and do not log it, include it in URLs, or write it to analytics.</div>
+<h3>How the pieces fit together</h3>
+<pre><code>Your server                     Stripe                      Browser
+     |                             |                            |
+     |  create PaymentIntent       |                            |
+     |---------------------------->|                            |
+     |  id + client_secret         |                            |
+     |<----------------------------|                            |
+     |                             |                            |
+     |  client_secret                                           |
+     |--------------------------------------------------------->|
+     |                             |   collect card details     |
+     |                             |<---------------------------|
+     |                             |   confirm(client_secret)   |
+     |                             |<---------------------------|
+     |                             |                            |
+     |                             |-- authentication if needed->|
+     |                             |<---------------------------|
+     |                             |                            |
+     |  webhook: payment_intent.succeeded                       |
+     |<----------------------------|                            |
+     |  fulfil the order           |                            |</code></pre>
+<p>Note where fulfilment sits. It is triggered by the webhook, not by the browser reporting success. Section 13 explains why that distinction is not optional.</p>
+
+<h2 id="s4"><span class="num">Section 4</span>The status lifecycle</h2>
+<p class="lede">A PaymentIntent has seven possible statuses. Your integration is essentially a response to this state machine, so it is worth understanding all seven before writing code against any of them.</p>
+<h3>The seven statuses</h3>
+<table>
+  <tr><th>Status</th><th>Meaning</th><th>Who acts next</th></tr>
+  <tr><td><code>requires_payment_method</code></td><td>No payment method is attached, or the last one failed. This is the starting state and the state a failed attempt returns to.</td><td>The customer</td></tr>
+  <tr><td><code>requires_confirmation</code></td><td>A payment method is attached but confirmation has not been requested. Only appears when you confirm manually.</td><td>You or the customer</td></tr>
+  <tr><td><code>requires_action</code></td><td>An extra step is needed, most often 3D Secure authentication, sometimes a redirect to a bank.</td><td>The customer</td></tr>
+  <tr><td><code>processing</code></td><td>Stripe is processing the payment. Common with asynchronous methods such as direct debits, briefly possible with cards.</td><td>Nobody. Wait.</td></tr>
+  <tr><td><code>requires_capture</code></td><td>The payment is authorised but funds are not yet taken. Only occurs when capture method is manual.</td><td>You</td></tr>
+  <tr><td><code>succeeded</code></td><td>The payment is complete and the funds are in your Stripe balance. Fulfil the order.</td><td>You</td></tr>
+  <tr><td><code>canceled</code></td><td>The PaymentIntent is terminated and cannot be used again.</td><td>Nobody</td></tr>
+</table>
+<h3>The transitions that matter</h3>
+<p><b>Failure returns to <code>requires_payment_method</code>.</b> When a card is declined, the PaymentIntent does not move to a failed state. It returns to <code>requires_payment_method</code> so the customer can try a different card against the same intent. This is deliberate and it is why you should not treat a decline as the end of a payment. Your UI should offer another attempt rather than sending the customer back to the start of your checkout.</p>
+<p><b><code>requires_action</code> is not a failure.</b> It is the most commonly mishandled status. An integration that treats anything other than <code>succeeded</code> as an error will reject a large share of legitimate European card payments, because authentication is mandatory for many of them. Section 8 covers this in full.</p>
+<p><b><code>processing</code> is terminal for your request but not for the payment.</b> You will not learn the outcome synchronously. You learn it from a webhook, possibly days later for some payment methods. Any code that assumes it knows the result at the end of the HTTP request is wrong for these methods.</p>
+<p><b><code>canceled</code> is final.</b> A canceled PaymentIntent cannot be revived. Create a new one. Stripe may also cancel a PaymentIntent automatically if it has been confirmed too many times, which is a protection against runaway retry loops in your code.</p>
+<h3>A simplified view</h3>
+<pre><code>  requires_payment_method
+            |
+            | attach a payment method
+            v
+   requires_confirmation          (manual confirmation only)
+            |
+            | confirm
+            v
+     +--------------+
+     | requires_action |  --- customer authenticates --+
+     +--------------+                                   |
+            |                                           |
+            | no action needed                          |
+            v                                           v
+       processing  ------------------------------>  succeeded
+            |                                           ^
+            | failure                                   |
+            v                                           |
+  requires_payment_method                     requires_capture
+                                               (manual capture,
+                                                then you capture)</code></pre>
+<p>This diagram is simplified. The authoritative set of transitions is in Stripe's documentation, and your code should treat the status field as the source of truth rather than inferring state from which call you just made.</p>
+<h3>Writing code against the status</h3>
+<p>The single most robust pattern is to switch on <code>status</code> and handle every value explicitly, including the ones you do not expect.</p>
+<pre><code>switch (intent.status) {
+  case 'succeeded':
+    return fulfil(intent);
+  case 'requires_action':
+    return sendToClientForAuthentication(intent.client_secret);
+  case 'requires_payment_method':
+    return askForAnotherCard(intent.last_payment_error);
+  case 'processing':
+    return showPendingState(intent);
+  case 'requires_capture':
+    return holdForCapture(intent);
+  case 'requires_confirmation':
+    return confirmServerSide(intent);
+  case 'canceled':
+    return startOver();
+  default:
+    // Stripe may add statuses. Fail loudly rather than silently.
+    logUnexpectedStatus(intent.status);
+    return showGenericError();
+}</code></pre>
+<p>The <code>default</code> branch matters. Payment APIs gain capabilities, and a switch that silently falls through on an unrecognised status will produce a customer who paid and an order that was never created.</p>
+
+<h2 id="s5"><span class="num">Section 5</span>Creating a PaymentIntent</h2>
+<p class="lede">Creation happens on your server, as early as you reasonably can. Stripe's guidance is to create the PaymentIntent as soon as you know the amount, so that every attempted payment is recorded against it.</p>
+<h3>The minimum request</h3>
+<pre><code>const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+const intent = await stripe.paymentIntents.create({
+  amount: 2000,
+  currency: 'gbp',
+  automatic_payment_methods: { enabled: true },
+});</code></pre>
+<p>Two parameters are required: <code>amount</code> and <code>currency</code>. Everything else is optional, and most of the optional parameters exist to answer questions you will have later.</p>
+<h3>Amount, and the mistake everyone makes once</h3>
+<p>Amounts are integers in the smallest unit of the currency. <code>2000</code> with <code>currency: 'gbp'</code> is twenty pounds. Sending <code>20.00</code> will either error or charge twenty pence, depending on how your code coerces it.</p>
+<p>Keep money as integers throughout your own system too. Floating point arithmetic on currency produces rounding errors that surface during reconciliation, usually months later and usually at the worst time. If you have a decimal type available in your database, use it, and convert to minor units at the boundary.</p>
+<p>Zero-decimal currencies are the exception to the general rule. In JPY, an amount of <code>2000</code> is two thousand yen, not twenty. If you handle multiple currencies, do not hardcode a divisor of 100 anywhere.</p>
+<h3>Parameters worth setting from the start</h3>
+<table>
+  <tr><th>Parameter</th><th>Why</th></tr>
+  <tr><td><code>metadata</code></td><td>Your own identifiers, such as order ID or internal customer ID. This is the single most useful optional parameter. Metadata appears in the Dashboard, in exports and on the objects delivered by webhooks, which makes reconciliation dramatically easier. Set it at creation; do not plan to add it later.</td></tr>
+  <tr><td><code>customer</code></td><td>Links the payment to a Customer. Required if you want to save the payment method, and useful for support staff looking at a customer's history.</td></tr>
+  <tr><td><code>description</code></td><td>Appears in the Dashboard and in some receipts. Write it for the human who will read it during a dispute, not for your logs.</td></tr>
+  <tr><td><code>statement_descriptor_suffix</code></td><td>What the customer sees on their bank statement. An unrecognisable descriptor is a leading cause of chargebacks that are not actually fraud.</td></tr>
+  <tr><td><code>receipt_email</code></td><td>Stripe sends a receipt in live mode. Useful if you are not sending your own.</td></tr>
+  <tr><td><code>capture_method</code></td><td>Set to <code>manual</code> if you need to authorise now and capture later. See Section 9. Changing this after creation is not possible, so decide at creation.</td></tr>
+  <tr><td><code>setup_future_usage</code></td><td>Signals that you intend to reuse the payment method. Affects how Stripe handles regional authentication requirements. See Section 15.</td></tr>
+</table>
+<h3>A realistic creation call</h3>
+<pre><code>const intent = await stripe.paymentIntents.create({
+  amount: order.totalMinorUnits,
+  currency: order.currency,
+  customer: customer.stripeId,
+  description: `Order ${order.reference}`,
+  statement_descriptor_suffix: 'NORTHSIDE',
+  automatic_payment_methods: { enabled: true },
+  metadata: {
+    order_id: order.id,
+    order_reference: order.reference,
+    environment: process.env.APP_ENV,
+  },
+}, {
+  idempotencyKey: `pi-create-${order.id}`,
+});</code></pre>
+<p>Note the idempotency key on the second argument. Section 10 explains why it is there and why the value is derived from your order rather than generated randomly at call time.</p>
+<p>Note also <code>environment</code> in the metadata. When a staging deployment is accidentally pointed at live keys, which happens, that field is how you find the resulting payments quickly.</p>
+<h3>Automatic payment methods</h3>
+<p>Setting <code>automatic_payment_methods: { enabled: true }</code> lets Stripe decide which payment methods to offer based on the amount, the currency and the customer's location, using what you have enabled in your Dashboard settings. This is the recommended default. It means adding a new payment method is a configuration change rather than a deployment.</p>
+<p>The alternative is to specify <code>payment_method_types</code> explicitly. Do this only when you have a specific reason, such as deliberately restricting to cards for a flow that cannot handle asynchronous settlement. An explicit list is a list you now have to maintain.</p>
+<h3>When to create it</h3>
+<p>Create the PaymentIntent when the amount is known and the customer is about to pay, not at the moment they click the final button. Creating it slightly early gives you a stable object to attach attempts to, and it means a slow creation call does not sit between the customer's click and your payment form.</p>
+<p>Do not create one on every page load of your checkout. You will accumulate abandoned PaymentIntents. They are harmless but they make your Dashboard noisy and your conversion metrics misleading. If the customer returns to a checkout they abandoned, retrieve and update the existing PaymentIntent rather than creating another.</p>
+<pre><code>// Reuse an existing intent for this order if one is still usable
+let intent;
+if (order.paymentIntentId) {
+  intent = await stripe.paymentIntents.retrieve(order.paymentIntentId);
+  const reusable = ['requires_payment_method', 'requires_confirmation', 'requires_action'];
+  if (!reusable.includes(intent.status)) {
+    intent = null;
+  } else if (intent.amount !== order.totalMinorUnits) {
+    intent = await stripe.paymentIntents.update(intent.id, {
+      amount: order.totalMinorUnits,
+    });
+  }
+}
+if (!intent) {
+  intent = await stripe.paymentIntents.create({ /* as above */ });
+  await order.update({ paymentIntentId: intent.id });
+}</code></pre>
+<p>Updating the amount matters if your basket can change after the PaymentIntent exists. An intent created for one amount and confirmed against a changed basket is a reconciliation problem.</p>
+
+<h2 id="s6"><span class="num">Section 6</span>Collecting payment details</h2>
+<p class="lede">Card details must not touch your server. This is not merely good practice. Handling raw card data pulls you into a compliance scope that is expensive and slow to satisfy, and there is no reason to accept it.</p>
+<h3>Why the client collects the details</h3>
+<p>Stripe.js and the Elements components render the card fields inside an iframe served by Stripe. The customer types into Stripe's page, visually embedded in yours. The details go from the browser to Stripe directly. Your server never sees a card number, which keeps your PCI DSS obligations at the lightest tier.</p>
+<p>If you proxy card details through your own server, even once, even in a prototype, your compliance scope changes. Teams do this accidentally by logging a request body. Be careful with request logging on any endpoint near the payment flow.</p>
+<h3>Mounting the Payment Element</h3>
+<pre><code>const stripe = Stripe('pk_test_...');
+
+const elements = stripe.elements({
+  clientSecret,
+  appearance: { theme: 'stripe' },
+});
+
+const paymentElement = elements.create('payment');
+paymentElement.mount('#payment-element');</code></pre>
+<p>The Payment Element renders whichever payment methods apply to this PaymentIntent, in the customer's language, with the right validation rules for their region. This is a large amount of work you are not doing.</p>
+<h3>Submitting</h3>
+<pre><code>form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  setSubmitting(true);
+
+  const { error } = await stripe.confirmPayment({
+    elements,
+    confirmParams: {
+      return_url: 'https://example.com/checkout/complete',
+    },
+  });
+
+  // Execution only reaches here if confirmation failed immediately.
+  // On success, or where authentication is needed, the customer is
+  // redirected to return_url and this code does not run.
+  if (error) {
+    if (error.type === 'card_error' || error.type === 'validation_error') {
+      showMessage(error.message);
+    } else {
+      showMessage('Something went wrong. Your card has not been charged.');
+    }
+    setSubmitting(false);
+  }
+});</code></pre>
+<div class="warn"><b>The control flow here surprises people.</b> When confirmation succeeds, <code>confirmPayment</code> does not return. The browser navigates to <code>return_url</code>. Any code you write after the call runs only in the failure case. Developers who put their success handling after the call find it never executes.</div>
+<h3>Handling the return</h3>
+<p>Stripe appends the PaymentIntent's client secret to your return URL as a query parameter. On that page, retrieve the intent and inspect its status.</p>
+<pre><code>const clientSecret = new URLSearchParams(window.location.search)
+  .get('payment_intent_client_secret');
+
+const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+
+switch (paymentIntent.status) {
+  case 'succeeded':
+    showMessage('Payment received. Thank you.');
+    break;
+  case 'processing':
+    showMessage('Payment processing. We will email you when it completes.');
+    break;
+  case 'requires_payment_method':
+    showMessage('That payment was not successful. Please try another card.');
+    break;
+  default:
+    showMessage('Something went wrong.');
+    break;
+}</code></pre>
+<div class="warn"><b>This page tells the customer what happened. It must not be what tells your system.</b> The customer can close the tab before the redirect completes, lose connectivity, or simply never arrive. Fulfilment is driven by webhooks, covered in Section 13. Treat this page as a courtesy to the customer and nothing more.</div>
+<h3>A note on error messages</h3>
+<p>Stripe returns messages on card errors that are written for customers and localised. Use them directly rather than substituting your own text. They are more accurate about what happened than any generic message you would write, and they have been tested on real customers.</p>
+<p>For every other error type, do not show the raw message. A message about an invalid parameter is a bug report for you, not information for a customer. Show something generic that makes clear whether the card was charged, and log the detail with enough context to debug it.</p>
+
+<h2 id="s7"><span class="num">Section 7</span>Confirmation flows</h2>
+<p class="lede">Confirmation is the step that tells Stripe to attempt the payment. Where that call is made, and when, is one of the few genuinely architectural decisions in this integration.</p>
+<h3>Three ways to confirm</h3>
+<table>
+  <tr><th>Flow</th><th>How it works</th><th>Use when</th></tr>
+  <tr><td>Client-side confirmation</td><td>The browser calls <code>stripe.confirmPayment()</code> with the client secret. Your server creates the intent and does nothing else until the webhook arrives.</td><td>Standard checkout. This is the default and the right choice for most integrations.</td></tr>
+  <tr><td>Server-side confirmation</td><td>Your server calls <code>confirm</code> with a payment method ID that the client created.</td><td>You need to run business logic between collecting details and charging, such as a final inventory check or fraud screen.</td></tr>
+  <tr><td>Create and confirm together</td><td>Pass <code>confirm: true</code> on creation.</td><td>Charging a saved payment method with no customer present. See Section 15.</td></tr>
+</table>
+<h3>Client-side confirmation</h3>
+<p>This is what Section 6 showed. Your server creates the PaymentIntent, hands over the client secret, and the browser does the rest. Authentication is handled for you by Stripe.js, including the redirect dance that some payment methods require.</p>
+<p>Prefer this. It involves the least code on your side and it handles the authentication cases correctly without you having to think about them.</p>
+<h3>Server-side confirmation</h3>
+<p>Sometimes you need to do something between the customer entering their card and the charge being attempted. A common case is a final stock check on a scarce item. In that case the client creates a PaymentMethod and sends you its ID, and your server confirms.</p>
+<pre><code>// Client
+const { paymentMethod, error } = await stripe.createPaymentMethod({
+  elements,
+});
+if (error) { showMessage(error.message); return; }
+await fetch('/api/pay', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    orderId: order.id,
+    paymentMethodId: paymentMethod.id,
+  }),
+});</code></pre>
+<pre><code>// Server
+const stock = await reserveStock(order);
+if (!stock.ok) {
+  return res.status(409).json({ error: 'out_of_stock' });
+}
+
+let intent;
+try {
+  intent = await stripe.paymentIntents.confirm(order.paymentIntentId, {
+    payment_method: req.body.paymentMethodId,
+    return_url: 'https://example.com/checkout/complete',
+  }, {
+    idempotencyKey: `pi-confirm-${order.id}-${attemptNumber}`,
+  });
+} catch (err) {
+  await releaseStock(stock);
+  return res.status(402).json({ error: toClientError(err) });
+}
+
+return res.json({
+  status: intent.status,
+  clientSecret: intent.client_secret,
+});</code></pre>
+<p>Returning the status and client secret to the client is necessary because the result may be <code>requires_action</code>. The browser then has to complete authentication, which it cannot do without the client secret.</p>
+<pre><code>// Client, handling the response
+const { status, clientSecret } = await response.json();
+
+if (status === 'requires_action') {
+  const { error, paymentIntent } = await stripe.handleNextAction({ clientSecret });
+  if (error) {
+    showMessage(error.message);
+  } else if (paymentIntent.status === 'succeeded') {
+    showMessage('Payment received.');
+  }
+} else if (status === 'succeeded') {
+  showMessage('Payment received.');
+}</code></pre>
+<div class="warn"><b>Server-side confirmation means you own the authentication round trip.</b> This is the main cost of choosing it. If you take this path and do not handle <code>requires_action</code>, every payment that requires authentication will fail, and in Europe that is a large proportion of them.</div>
+<h3>Releasing resources on failure</h3>
+<p>Notice the <code>releaseStock</code> call in the catch block above. If you reserve something before confirming, you must release it on every failure path, including the ones you did not anticipate. A reservation leak is quiet and it compounds.</p>
+<p>The subtler problem is the <code>requires_action</code> case. The payment has not failed, but it has not succeeded either, and the customer might abandon it. Reserved stock needs a timeout rather than only an explicit release, because the explicit release will not always run.</p>
+<h3>Which to choose</h3>
+<p>Start with client-side confirmation. Move to server-side only when you have a specific thing that must happen between card entry and charge, and when doing it after the charge is genuinely unacceptable. In many cases the cleaner design is to authorise the payment, run your check, and then capture or cancel, which Section 9 describes.</p>
+
+<h2 id="s8"><span class="num">Section 8</span>Authentication and Strong Customer Authentication</h2>
+<p class="lede">Some payments require the customer to prove they are who they say they are, usually through their banking app. Handling this correctly is not optional for European payments, and getting it wrong looks exactly like a high decline rate.</p>
+<h3>What is actually happening</h3>
+<p>3D Secure is a protocol that lets a card issuer challenge a transaction before approving it. The customer is shown something from their bank, typically a push notification or a code, and approves the payment there.</p>
+<p>In the European Economic Area and the UK, regulation known as Strong Customer Authentication requires this for a large share of online card payments. There are exemptions, for low-value transactions and for some merchant-initiated payments, but you cannot rely on them and you do not control whether they are applied. The issuer decides.</p>
+<h3>How it appears in the API</h3>
+<p>When authentication is needed, the PaymentIntent moves to <code>requires_action</code>. The <code>next_action</code> field describes what must happen. In almost all cases you do not need to read that field, because Stripe.js knows how to handle it.</p>
+<pre><code>{
+  "id": "pi_3Oz...",
+  "status": "requires_action",
+  "next_action": {
+    "type": "use_stripe_sdk"
+  },
+  "client_secret": "pi_3Oz..._secret_..."
+}</code></pre>
+<p>With client-side confirmation, Stripe.js presents the challenge automatically. With server-side confirmation you call <code>stripe.handleNextAction()</code> as shown in Section 7.</p>
+<h3>The failure mode to avoid</h3>
+<p>The common mistake is code shaped like this:</p>
+<pre><code>// Wrong
+const intent = await stripe.paymentIntents.confirm(id, { payment_method: pm });
+if (intent.status === 'succeeded') {
+  await fulfil(order);
+} else {
+  await markPaymentFailed(order);   // treats requires_action as failure
+}</code></pre>
+<p>This integration will work in testing with a card that does not trigger authentication, then fail for a large share of real European customers. The payment has not failed. It is waiting for the customer, and the customer never gets the chance because your code has already given up.</p>
+<p>The correct shape handles each status explicitly, as in Section 4.</p>
+<h3>Testing authentication properly</h3>
+<p>Stripe provides test cards that force an authentication challenge, and cards where the authentication itself fails. Both paths need testing. A card that always requires authentication and then succeeds is not sufficient coverage, because a customer who dismisses the bank's prompt produces a different outcome that your code must also handle.</p>
+<table>
+  <tr><th>Scenario to test</th><th>Expected handling</th></tr>
+  <tr><td>Authentication required, customer completes it</td><td>Status moves to <code>succeeded</code>. Fulfilment proceeds, driven by the webhook.</td></tr>
+  <tr><td>Authentication required, customer abandons it</td><td>Status stays <code>requires_action</code>. No fulfilment. The intent remains usable if they come back.</td></tr>
+  <tr><td>Authentication required, customer fails it</td><td>Status returns to <code>requires_payment_method</code>. Offer another attempt.</td></tr>
+  <tr><td>Authentication not required</td><td>Straight to <code>succeeded</code> or <code>processing</code>.</td></tr>
+</table>
+<h3>Reducing how often authentication is required</h3>
+<p>You have limited influence, but not none. Sending richer data with the payment, such as billing address and email, allows the issuer to make a better risk assessment and may let it waive the challenge. Stripe passes this through where it can.</p>
+<p>Do not try to engineer your way around authentication. Integrations that attempt to avoid it tend to produce higher decline rates, not lower, because an issuer that cannot authenticate a risky-looking payment will often simply decline it.</p>
+
+<h2 id="s9"><span class="num">Section 9</span>Authorise now, capture later</h2>
+<p class="lede">Card payments have two steps. Authorisation reserves the funds against the customer's credit limit. Capture takes them. Most integrations do both at once, but separating them is the right design for several common business models.</p>
+<h3>When you want this</h3>
+<ul>
+  <li><b>You ship physical goods.</b> Many card networks and consumer protection rules expect you to charge at dispatch rather than at order. Authorising at checkout and capturing at dispatch matches that.</li>
+  <li><b>The final amount is not known at order time.</b> Hotels, car hire, fuel and anything with a variable final total. You authorise an estimate and capture the actual, which may be lower.</li>
+  <li><b>You need a human to approve.</b> High-value orders, bespoke manufacturing, anything with a manual fraud review step.</li>
+  <li><b>Fulfilment can fail after payment.</b> An authorisation that you simply never capture is much cleaner than a charge you have to refund.</li>
+</ul>
+<h3>How to do it</h3>
+<pre><code>const intent = await stripe.paymentIntents.create({
+  amount: 15000,
+  currency: 'gbp',
+  capture_method: 'manual',
+  automatic_payment_methods: { enabled: true },
+  metadata: { order_id: order.id },
+});</code></pre>
+<p>Once confirmed and authenticated, the intent reaches <code>requires_capture</code> rather than <code>succeeded</code>. The funds are held but not taken.</p>
+<pre><code>// Later, when you dispatch
+const captured = await stripe.paymentIntents.capture(intent.id, {
+  amount_to_capture: 14200,   // optional; defaults to the full amount
+}, {
+  idempotencyKey: `pi-capture-${order.id}`,
+});</code></pre>
+<p>Capturing less than the authorised amount is allowed. The difference is released back to the customer's available credit. Capturing more is not allowed, so authorise for the maximum plausible total rather than the expected one.</p>
+<h3>The constraint that catches people out</h3>
+<div class="warn"><b>Authorisations expire.</b> An uncaptured authorisation is typically valid for about seven days, and the exact window depends on the card network and the issuer. After it expires the hold is released and the money is no longer reserved for you. If your fulfilment can take longer than a week, manual capture alone will not work and you need a different design.</div>
+<p>Build an explicit timer. Track authorisation age, alert before expiry, and decide deliberately whether to capture, cancel, or re-authorise. Discovering expired authorisations during month-end reconciliation is a bad way to find out.</p>
+<h3>Cancelling instead of capturing</h3>
+<p>If you decide not to fulfil, cancel rather than capturing and refunding.</p>
+<pre><code>await stripe.paymentIntents.cancel(intent.id, {
+  cancellation_reason: 'abandoned',
+});</code></pre>
+<p>Valid reasons are <code>duplicate</code>, <code>fraudulent</code>, <code>requested_by_customer</code> and <code>abandoned</code>. Record one that is true, because this field is visible during disputes and in your own analysis of why orders fail.</p>
+<p>Cancelling releases the hold. It does not produce a refund on the customer's statement, which is better for them. A capture followed by a refund shows two entries, confuses customers, and in some cases costs you fees.</p>
+<h3>What the customer sees</h3>
+<p>An authorisation usually appears as a pending transaction in their banking app. It looks like a charge to most people. Two consequences follow. First, say clearly at checkout that they will be charged at dispatch, or you will field support messages about being charged early. Second, when you capture a lower amount, the pending entry is replaced by the real one, which can look like two transactions briefly. Mention it in your confirmation email if your amounts commonly change.</p>
+
+<h2 id="s10"><span class="num">Section 10</span>Idempotency</h2>
+<p class="lede">Networks fail in the middle of requests. When that happens you do not know whether the operation completed. Idempotency is the mechanism that lets you retry safely without charging a customer twice, and it is the single most important reliability feature in the API.</p>
+<h3>The problem</h3>
+<p>Your server sends a request to create and confirm a payment. The connection drops before the response arrives. The payment may have succeeded, or it may never have reached Stripe. From your side the two are indistinguishable.</p>
+<p>Without idempotency you have two bad options. Retry, and risk charging twice. Do not retry, and risk a customer who was charged for an order you never created. Both generate support contacts and both erode trust.</p>
+<h3>How it works</h3>
+<p>Send an <code>Idempotency-Key</code> header with any POST request. If Stripe has already processed a request with that key, it returns the original response instead of performing the operation again.</p>
+<pre><code>curl https://api.stripe.com/v1/payment_intents \
+  -u "sk_test_...:" \
+  -H "Idempotency-Key: pi-create-order-10482" \
+  -d amount=2000 \
+  -d currency=gbp</code></pre>
+<p>In the SDKs it is an option on the request rather than a body parameter.</p>
+<pre><code>await stripe.paymentIntents.create(params, {
+  idempotencyKey: `pi-create-${order.id}`,
+});</code></pre>
+<h3>Choosing keys</h3>
+<p>Keys are strings of up to 255 characters. Stripe suggests V4 UUIDs or another random value with enough entropy to avoid collisions. That advice is correct for the general case, but for retry safety you need something more specific.</p>
+<p>A randomly generated key created at the moment of the call does not protect you, because the retry generates a different key and performs the operation again. The key must be derived from the operation, so that the retry produces the same key.</p>
+<table>
+  <tr><th>Key strategy</th><th>Protects against a retry?</th></tr>
+  <tr><td><code>uuid()</code> generated at call time</td><td>No. Each attempt is a different key.</td></tr>
+  <tr><td><code>`pi-create-${order.id}`</code></td><td>Yes, for one creation per order.</td></tr>
+  <tr><td><code>`pi-capture-${order.id}`</code></td><td>Yes, for one capture per order.</td></tr>
+  <tr><td><code>`refund-${order.id}-${refundRequestId}`</code></td><td>Yes, and allows multiple distinct refunds.</td></tr>
+</table>
+<p>Generate the key once, store it with the operation, and reuse it on every retry of that same operation. If your framework retries automatically, make sure it preserves the key rather than regenerating one.</p>
+<h3>Caching behaviour, including the subtleties</h3>
+<p>For API v1, Stripe caches the result once the operation begins executing, and that includes errors. Retrying a cached <code>400</code> with the same key returns the same <code>400</code>. Stripe also caches <code>500</code> responses from POST requests made with an idempotency key, so a retry returns the cached response while it is retained.</p>
+<p>Errors that occur before execution begins are not cached. Invalid parameters, an invalid API key and rate limiting all fall into this group. Those requests should be retried after you fix the cause.</p>
+<div class="warn"><b>Rate limiting runs before the idempotency layer.</b> This means a request rate limited with a <code>429</code> can produce a different result later with the same key, because the first attempt never reached the idempotency machinery. Do not assume that a key you have used once is permanently bound to its outcome if the response was a 429.</div>
+<p>Reusing a key with different parameters produces an <code>idempotency_error</code>. This is a safety net and it usually indicates a bug in your key derivation. Treat it as an alert rather than something to retry around.</p>
+<p>API v2 uses different replay behaviour with a 30-day window. If you are working against v2, read its own idempotency documentation rather than assuming v1 semantics carry over.</p>
+<h3>What to apply it to</h3>
+<p>Every POST request that moves money or creates an object. Creation, confirmation, capture, refunds. Do not send idempotency keys on GET requests; they are already safe to repeat and the header has no effect.</p>
+<h3>A worked example</h3>
+<pre><code>async function chargeWithRetry(order, params) {
+  const key = `pi-create-confirm-${order.id}`;
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await stripe.paymentIntents.create(params, { idempotencyKey: key });
+    } catch (err) {
+      const retryable =
+        err.type === 'api_error' ||
+        err.type === 'api_connection_error' ||
+        err.statusCode === 429;
+
+      if (!retryable || attempt === maxAttempts) throw err;
+
+      await sleep(Math.min(2 ** attempt * 250, 4000) + Math.random() * 250);
+    }
+  }
+}</code></pre>
+<p>The same key is used on every attempt, which is the point. The jitter on the backoff matters when a transient outage causes many of your servers to retry simultaneously.</p>
+
+<h2 id="s11"><span class="num">Section 11</span>Error handling</h2>
+<p class="lede">Stripe returns four types of error. They demand genuinely different responses, and collapsing them into one handler is the most common source of both bad customer experience and undiagnosed bugs.</p>
+<h3>The four types</h3>
+<table>
+  <tr><th>Type</th><th>What it means</th><th>Your response</th></tr>
+  <tr><td><code>card_error</code></td><td>The card cannot be charged. Declines, expired cards, incorrect CVC. The most common type by far.</td><td>Show the customer the message Stripe provides. Let them try again. Not a bug.</td></tr>
+  <tr><td><code>invalid_request_error</code></td><td>Your request was wrong. A missing parameter, an invalid value, an object that does not exist.</td><td>A bug in your code. Log loudly, alert, show the customer a generic message. Never retry unchanged.</td></tr>
+  <tr><td><code>idempotency_error</code></td><td>A key was reused with different parameters or against a different endpoint.</td><td>A bug in your key derivation. Alert. Do not retry.</td></tr>
+  <tr><td><code>api_error</code></td><td>Something went wrong at Stripe. Rare.</td><td>Retry with backoff and the same idempotency key.</td></tr>
+</table>
+<p>Client libraries also surface connection and authentication failures as their own exception types. A connection error is retryable. An authentication error means your key is wrong or revoked, and retrying will not help.</p>
+<h3>HTTP status codes</h3>
+<table>
+  <tr><th>Code</th><th>Meaning</th><th>Retry?</th></tr>
+  <tr><td>200</td><td>Success</td><td>n/a</td></tr>
+  <tr><td>400</td><td>Bad request, often a missing or malformed parameter</td><td>No</td></tr>
+  <tr><td>401</td><td>Authentication failed. Wrong or revoked key.</td><td>No</td></tr>
+  <tr><td>402</td><td>Request failed with valid parameters. This is where card declines land.</td><td>Not automatically. The customer acts.</td></tr>
+  <tr><td>403</td><td>The key lacks permission for this operation</td><td>No</td></tr>
+  <tr><td>404</td><td>No such object</td><td>No</td></tr>
+  <tr><td>409</td><td>Conflict, often concurrent modification of the same object</td><td>Yes, after re-reading</td></tr>
+  <tr><td>429</td><td>Rate limited</td><td>Yes, with exponential backoff</td></tr>
+  <tr><td>500, 502, 503, 504</td><td>Server error at Stripe. Rare.</td><td>Yes, with backoff and the same idempotency key</td></tr>
+</table>
+<h3>A handler that distinguishes properly</h3>
+<pre><code>async function handleStripeCall(fn, context) {
+  try {
+    return { ok: true, value: await fn() };
+  } catch (err) {
+    switch (err.type) {
+      case 'StripeCardError':
+        // Expected. The customer's card was refused.
+        logger.info('card_declined', {
+          ...context,
+          code: err.code,
+          declineCode: err.decline_code,
+          charge: err.charge,
+        });
+        return { ok: false, customerMessage: err.message, retryable: false };
+
+      case 'StripeInvalidRequestError':
+        // Our bug. Page someone.
+        logger.error('stripe_invalid_request', {
+          ...context, param: err.param, message: err.message,
+        });
+        alerting.fire('stripe_invalid_request', context);
+        return { ok: false, customerMessage: GENERIC_FAILURE, retryable: false };
+
+      case 'StripeIdempotencyError':
+        logger.error('stripe_idempotency_conflict', { ...context });
+        alerting.fire('stripe_idempotency_conflict', context);
+        return { ok: false, customerMessage: GENERIC_FAILURE, retryable: false };
+
+      case 'StripeRateLimitError':
+      case 'StripeAPIError':
+      case 'StripeConnectionError':
+        logger.warn('stripe_transient', { ...context, type: err.type });
+        return { ok: false, customerMessage: TRY_AGAIN, retryable: true };
+
+      case 'StripeAuthenticationError':
+        logger.error('stripe_auth_failed', { ...context });
+        alerting.fire('stripe_auth_failed', context, { severity: 'critical' });
+        return { ok: false, customerMessage: GENERIC_FAILURE, retryable: false };
+
+      default:
+        logger.error('stripe_unknown_error', { ...context, err });
+        return { ok: false, customerMessage: GENERIC_FAILURE, retryable: false };
+    }
+  }
+}</code></pre>
+<p>The important property of this handler is that card declines are logged at info level and never alert anyone, while invalid request errors page someone immediately. If your alerting treats those the same, either you are woken every night by normal declines, or you never find out that a parameter change broke your integration.</p>
+<h3>The uncertain outcome</h3>
+<p>A connection error on a confirmation call leaves you genuinely unsure whether the payment went through. Do not guess. Retrieve the PaymentIntent and read its status.</p>
+<pre><code>async function resolveUncertainOutcome(paymentIntentId) {
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  return intent.status;
+}</code></pre>
+<p>This is why creating the PaymentIntent and storing its ID before confirming is valuable. If you have the ID, uncertainty is always resolvable with one read. If you do not, because the connection failed during creation, you need the idempotency key to recover, which is another reason to derive it from your own order ID.</p>
+
+<h2 id="s12"><span class="num">Section 12</span>Declines</h2>
+<p class="lede">Declines are not errors in your system. They are a normal, high-volume outcome, and how you respond to them has a direct and measurable effect on revenue.</p>
+<h3>Reading a decline</h3>
+<p>A declined card produces a <code>card_error</code>. Several fields describe what happened, at different levels of precision.</p>
+<table>
+  <tr><th>Field</th><th>Content</th></tr>
+  <tr><td><code>code</code></td><td>A short machine-readable string for the error, such as <code>card_declined</code>.</td></tr>
+  <tr><td><code>decline_code</code></td><td>More specific detail on why the issuer declined, where the issuer provided it.</td></tr>
+  <tr><td><code>message</code></td><td>A customer-facing explanation, localised. Show this one.</td></tr>
+  <tr><td><code>advice_code</code></td><td>Where the issuer supplies it, a short string indicating how to proceed.</td></tr>
+  <tr><td><code>network_decline_code</code></td><td>The raw code from the card network, for investigation.</td></tr>
+  <tr><td><code>network_advice_code</code></td><td>A two digit code from the network advising the merchant how to proceed.</td></tr>
+  <tr><td><code>charge</code></td><td>The ID of the failed charge, which is useful when a customer disputes that an attempt was made.</td></tr>
+  <tr><td><code>doc_url</code></td><td>A link to Stripe's documentation for this error.</td></tr>
+</table>
+<h3>The retry decision</h3>
+<p>Some declines are worth retrying later and some are not. Retrying a hard decline repeatedly can be treated as abusive by card networks, and it will not succeed.</p>
+<table>
+  <tr><th>Category</th><th>Example causes</th><th>Action</th></tr>
+  <tr><td>Soft, temporary</td><td>Insufficient funds, issuer temporarily unavailable, velocity limits</td><td>Retry later is reasonable. For subscriptions, schedule a retry over days rather than minutes.</td></tr>
+  <tr><td>Soft, customer-fixable</td><td>Incorrect CVC, wrong postcode, expired card</td><td>Ask the customer to correct it now. Do not retry the same details.</td></tr>
+  <tr><td>Hard</td><td>Lost or stolen card, pickup card, do not honour with a hard advice code, fraudulent</td><td>Do not retry. Ask for a different payment method. Do not tell the customer the card was reported stolen.</td></tr>
+  <tr><td>Blocked by rules</td><td>Blocked by your own fraud rules</td><td>Do not retry. Review your rules if this is frequent.</td></tr>
+</table>
+<p>Where the issuer provides <code>advice_code</code> or <code>network_advice_code</code>, use it. It is the issuer telling you directly whether another attempt is worth making.</p>
+<div class="warn"><b>Be careful what you tell the customer about a decline.</b> Stripe's own message is deliberately vague on some decline reasons, and that is intentional. If a card has been reported stolen, telling the person holding it exactly that is a security problem. Show Stripe's message rather than translating the decline code yourself.</div>
+<h3>Recovering revenue from declines</h3>
+<p>Three practical measures, roughly in order of value.</p>
+<p><b>Let the customer retry in place.</b> The PaymentIntent returns to <code>requires_payment_method</code> after a decline, so the same intent accepts another attempt. Keep them on the payment step with a clear message and the form ready. Sending them back to the basket loses a meaningful share of them.</p>
+<p><b>Offer an alternative payment method.</b> If a card is declined and you accept other methods, show them. A customer whose card has failed twice is more willing to use a wallet than to find another card.</p>
+<p><b>For saved cards, use network updates.</b> Card networks can tell Stripe about reissued cards, which prevents a predictable wave of declines when cards expire. This matters for recurring billing more than for one-off checkout.</p>
+<h3>Monitoring</h3>
+<p>Track decline rate by <code>decline_code</code>, not just in aggregate. Aggregate decline rate is noisy and moves with your traffic mix. A specific code rising sharply is a signal worth acting on. A jump in <code>do_not_honor</code> can indicate a problem with how you are sending data. A jump in fraud-related codes can indicate you are being targeted, or that your own rules are miscalibrated.</p>
+
+<h2 id="s13"><span class="num">Section 13</span>Webhooks</h2>
+<p class="lede">Webhooks are how your system learns what actually happened. Treating them as an optional extra, rather than as the primary source of truth, is the single most consequential design error available in this integration.</p>
+<h3>Why the browser cannot be your source of truth</h3>
+<p>After a successful payment the customer is redirected to your return URL and your page reports success. It is tempting to fulfil the order there. Do not.</p>
+<ul>
+  <li>The customer can close the tab during the redirect.</li>
+  <li>Their connection can drop between the bank's authentication page and your site.</li>
+  <li>Some payment methods settle hours or days later, long after the browser session has ended.</li>
+  <li>The redirect can be intercepted or replayed by anyone who wants a free order.</li>
+</ul>
+<p>Only your server, having verified a signed event from Stripe, knows that money moved. Everything that must happen exactly once when a payment succeeds belongs in the webhook handler.</p>
+<h3>Setting up an endpoint</h3>
+<p>Create an HTTPS endpoint and register it in the Dashboard or via the API, selecting the events you want. Start with a small set and add more as you need them. Subscribing to everything produces volume you will not read.</p>
+<pre><code>const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET; // whsec_...
+
+app.post('/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+      logger.warn('webhook_signature_failed', { message: err.message });
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Acknowledge immediately, process asynchronously.
+    enqueue(event);
+    res.json({ received: true });
+  });</code></pre>
+<div class="warn"><b>Signature verification needs the raw body.</b> Stripe signs the exact bytes it sent. If your framework parses JSON before your handler runs, verification fails with a message that does not obviously point at the cause. In Express this means <code>express.raw()</code> on this route specifically, mounted before any global JSON body parser. Teams lose hours to this.</div>
+<h3>Verifying properly</h3>
+<p>Signature verification is not optional. Without it, anyone who learns your endpoint URL can post a fabricated <code>payment_intent.succeeded</code> event and receive free goods. The <code>Stripe-Signature</code> header and your <code>whsec_</code> secret are what prevent that.</p>
+<p>The SDK handles the comparison correctly, including the timestamp check that prevents replay of an old captured request. Use the SDK's helper rather than implementing HMAC comparison yourself.</p>
+<p>Store the signing secret as you would any credential. It is per endpoint, so a test endpoint and a live endpoint have different secrets, and a mismatch presents as every event failing verification.</p>
+<h3>Acknowledge fast, process later</h3>
+<p>Return a 2xx quickly. Stripe treats a slow response as a failure and will retry, which means slow processing produces duplicate deliveries on top of whatever made it slow. Push the event onto a queue and process it outside the request.</p>
+<p>If your handler does its work inline and that work takes eight seconds, you have built a system that duplicates its own work under load, exactly when it is least able to cope.</p>
+<h3>Consuming idempotently</h3>
+<p>Webhook delivery is at least once. You will receive duplicates. Your handler must produce the same result whether an event arrives once or five times.</p>
+<p>Every event has a unique <code>id</code>. Record processed IDs and skip repeats.</p>
+<pre><code>async function processEvent(event) {
+  const inserted = await db.processedEvents.insertIfAbsent({
+    id: event.id,
+    type: event.type,
+    receivedAt: new Date(),
+  });
+
+  if (!inserted) {
+    logger.info('webhook_duplicate_skipped', { id: event.id });
+    return;
+  }
+
+  try {
+    await route(event);
+  } catch (err) {
+    // Allow redelivery to retry this event.
+    await db.processedEvents.delete(event.id);
+    throw err;
+  }
+}</code></pre>
+<p>The insert must be atomic, using a unique constraint on the event ID rather than a read followed by a write. Two deliveries can arrive simultaneously on different workers, and a check-then-act sequence will let both through.</p>
+<p>Note the deletion on failure. If processing throws, the record is removed so that Stripe's redelivery can try again. Without that, a transient failure permanently marks the event as handled.</p>
+<h3>Ordering is not guaranteed</h3>
+<p>Events can arrive out of order. You can receive <code>payment_intent.succeeded</code> before <code>payment_intent.created</code>. Do not write a handler that assumes a sequence.</p>
+<p>The defensive pattern is to treat each event as a trigger to check current state rather than as a state transition in itself. Stripe's own guidance notes that the object included in an event is a snapshot that can be stale, and recommends fetching the latest resource from the API before taking any critical action.</p>
+<pre><code>async function onPaymentSucceeded(event) {
+  // The embedded object may be stale. Re-read before acting.
+  const intent = await stripe.paymentIntents.retrieve(event.data.object.id);
+
+  if (intent.status !== 'succeeded') {
+    logger.info('event_superseded', { id: intent.id, status: intent.status });
+    return;
+  }
+
+  const orderId = intent.metadata.order_id;
+  await fulfilOnce(orderId, intent.id);
+}</code></pre>
+<h3>The events worth subscribing to</h3>
+<table>
+  <tr><th>Event</th><th>Act on it by</th></tr>
+  <tr><td><code>payment_intent.succeeded</code></td><td>Fulfilling the order. This is the one that matters most.</td></tr>
+  <tr><td><code>payment_intent.payment_failed</code></td><td>Recording the attempt, notifying the customer if they are not present, releasing reserved stock.</td></tr>
+  <tr><td><code>payment_intent.processing</code></td><td>Showing a pending state for asynchronous methods. Do not fulfil.</td></tr>
+  <tr><td><code>payment_intent.canceled</code></td><td>Releasing reservations and closing the order.</td></tr>
+  <tr><td><code>payment_intent.requires_action</code></td><td>Usually nothing automated. Useful for diagnosing drop-off.</td></tr>
+  <tr><td><code>charge.refunded</code></td><td>Updating your records when a refund is issued, including from the Dashboard.</td></tr>
+  <tr><td><code>charge.dispute.created</code></td><td>Alerting a human. Disputes have deadlines and evidence requirements.</td></tr>
+</table>
+<p>Subscribe to refund and dispute events even if you never issue refunds from your own code. Someone will eventually refund from the Dashboard, and without the event your system quietly disagrees with reality.</p>
+<h3>Local development</h3>
+<p>The Stripe CLI forwards live test-mode events to your machine, which removes the need for a tunnel.</p>
+<pre><code>stripe listen --forward-to localhost:4242/webhooks/stripe</code></pre>
+<p>It prints a signing secret for the session. Use that one locally. You can also fire specific events on demand, which makes testing handlers straightforward.</p>
+<pre><code>stripe trigger payment_intent.succeeded
+stripe trigger payment_intent.payment_failed</code></pre>
+
+<h2 id="s14"><span class="num">Section 14</span>Reconciliation</h2>
+<p class="lede">Webhooks are reliable, not infallible. Your endpoint can be down for an hour, a deployment can drop in-flight events, a bug can throw on a subset of payloads. Reconciliation is the safety net that catches what the primary path missed.</p>
+<h3>Why you need a second mechanism</h3>
+<p>Consider a deployment that introduces a bug in your webhook handler and is live for forty minutes. Stripe retries failed deliveries, so most of those events will eventually arrive. But if your endpoint returned 200 while failing internally, nothing is retried and those payments are silently unfulfilled.</p>
+<p>The customers affected have paid. They will contact you, one at a time, over the following week. Reconciliation turns that into a job that notices in the first hour.</p>
+<h3>The simplest effective reconciliation</h3>
+<p>Run a periodic job that looks for payments Stripe considers successful and your system does not.</p>
+<pre><code>async function reconcile({ lookbackMinutes = 180 } = {}) {
+  const createdAfter = Math.floor(Date.now() / 1000) - lookbackMinutes * 60;
+  let startingAfter;
+  let checked = 0, repaired = 0;
+
+  do {
+    const page = await stripe.paymentIntents.list({
+      created: { gte: createdAfter },
+      limit: 100,
+      starting_after: startingAfter,
+    });
+
+    for (const intent of page.data) {
+      checked++;
+      if (intent.status !== 'succeeded') continue;
+
+      const orderId = intent.metadata.order_id;
+      if (!orderId) {
+        logger.error('payment_without_order_metadata', { id: intent.id });
+        continue;
+      }
+
+      const order = await db.orders.find(orderId);
+      if (order && order.status === 'paid') continue;
+
+      logger.warn('reconciling_unfulfilled_payment', {
+        intentId: intent.id, orderId,
+      });
+      await fulfilOnce(orderId, intent.id);
+      repaired++;
+    }
+
+    startingAfter = page.has_more
+      ? page.data[page.data.length - 1].id
+      : undefined;
+  } while (startingAfter);
+
+  metrics.gauge('reconciliation.checked', checked);
+  metrics.gauge('reconciliation.repaired', repaired);
+}</code></pre>
+<p>Run it every fifteen minutes with a lookback window several times longer than the interval, so that overlapping runs cover any gap. It must be safe to run concurrently with webhook processing, which is why <code>fulfilOnce</code> has to be genuinely idempotent.</p>
+<h3>Reconcile in both directions</h3>
+<p>The job above finds payments Stripe knows about and you do not. The reverse case matters too: orders your system marked paid where Stripe has no successful payment. That usually indicates a bug in your own code rather than a delivery problem, and it is more serious because you have shipped goods for nothing.</p>
+<p>A daily job comparing the two sets, with a report of anything that does not match, is enough. It does not need to repair anything automatically. It needs to tell a person.</p>
+<h3>What to alert on</h3>
+<table>
+  <tr><th>Signal</th><th>Why it matters</th></tr>
+  <tr><td><code>reconciliation.repaired</code> above zero</td><td>Your primary path missed something. One is worth investigating. A spike is an incident.</td></tr>
+  <tr><td>Payments with no <code>order_id</code> in metadata</td><td>Something created a payment outside your normal flow, or your metadata is not being set.</td></tr>
+  <tr><td>Webhook endpoint error rate</td><td>Available in the Dashboard. A rising rate precedes unfulfilled orders.</td></tr>
+  <tr><td>Orders paid in your system with no matching successful intent</td><td>Potential revenue loss, and a sign of a logic bug.</td></tr>
+  <tr><td>Age of oldest unprocessed event in your queue</td><td>A growing backlog means fulfilment delays that customers will notice before you do.</td></tr>
+</table>
+<h3>A note on the metadata dependency</h3>
+<p>This entire approach depends on <code>metadata.order_id</code> being present on every PaymentIntent. That is why Section 5 recommends setting metadata at creation and treats it as the most useful optional parameter. A payment with no link back to your own records is a manual investigation, and manual investigations do not scale.</p>
+
+<h2 id="s15"><span class="num">Section 15</span>Saving payment methods for later</h2>
+<p class="lede">Charging a returning customer without asking for their card again is straightforward, with one significant complication around authentication that catches most teams the first time.</p>
+<h3>Saving during a payment</h3>
+<p>Set <code>setup_future_usage</code> when creating the PaymentIntent. The value tells Stripe how you intend to use the saved method, and that affects how regional authentication requirements are handled.</p>
+<table>
+  <tr><th>Value</th><th>Meaning</th></tr>
+  <tr><td><code>on_session</code></td><td>Future charges will happen while the customer is present and able to authenticate.</td></tr>
+  <tr><td><code>off_session</code></td><td>Future charges will happen when the customer is not present, such as a subscription renewal.</td></tr>
+</table>
+<pre><code>const intent = await stripe.paymentIntents.create({
+  amount: 2000,
+  currency: 'gbp',
+  customer: customer.stripeId,
+  setup_future_usage: 'off_session',
+  automatic_payment_methods: { enabled: true },
+});</code></pre>
+<p>Declaring <code>off_session</code> at the time of the first payment allows Stripe to obtain the mandate and authentication needed for later charges, while the customer is still present to complete it. Omitting it and then trying to charge later produces a much higher failure rate, because the authentication that should have happened up front now cannot happen at all.</p>
+<div class="tip"><b>Get consent explicitly.</b> Saving a payment method requires the customer's agreement, and in several jurisdictions that agreement must be recorded. A checkbox that says you will store the card for future orders, unticked by default, with the text stored alongside the order. This is both a legal requirement in places and useful evidence in a dispute.</div>
+<h3>Saving without a payment</h3>
+<p>To collect a card now and charge later, use a SetupIntent rather than a PaymentIntent. It follows the same lifecycle and creates no charge. The statuses are the same set minus the ones that only make sense for a payment.</p>
+<pre><code>const setupIntent = await stripe.setupIntents.create({
+  customer: customer.stripeId,
+  usage: 'off_session',
+  automatic_payment_methods: { enabled: true },
+});</code></pre>
+<p>The client flow mirrors payment confirmation, using <code>stripe.confirmSetup()</code> in place of <code>stripe.confirmPayment()</code>.</p>
+<h3>Charging a saved method</h3>
+<pre><code>try {
+  const intent = await stripe.paymentIntents.create({
+    amount: 2000,
+    currency: 'gbp',
+    customer: customer.stripeId,
+    payment_method: savedPaymentMethodId,
+    off_session: true,
+    confirm: true,
+  }, {
+    idempotencyKey: `renewal-${subscription.id}-${periodStart}`,
+  });
+
+  if (intent.status === 'succeeded') {
+    await recordRenewal(subscription, intent);
+  }
+} catch (err) {
+  if (err.code === 'authentication_required') {
+    // The issuer wants the customer present. Email them a link.
+    await requestCustomerAuthentication(customer, err.raw.payment_intent.id);
+  } else {
+    await handleRenewalFailure(subscription, err);
+  }
+}</code></pre>
+<p>Two parameters do the work here. <code>off_session: true</code> tells Stripe the customer is not present, and <code>confirm: true</code> attempts the charge immediately rather than requiring a separate call.</p>
+<h3>The complication</h3>
+<p>Even with everything set up correctly, an issuer can still demand authentication for an off-session charge. When that happens the request fails with <code>authentication_required</code>, and there is no way to complete it without the customer.</p>
+<p>You need a recovery path. The usual shape is an email containing a link back to your site, where the customer completes authentication against the existing PaymentIntent using its client secret. Build this before you launch recurring billing rather than after the first failed renewal cycle, because the alternative is a queue of failed renewals and no mechanism to recover them.</p>
+<h3>Listing a customer's saved methods</h3>
+<pre><code>const methods = await stripe.paymentMethods.list({
+  customer: customer.stripeId,
+  type: 'card',
+});</code></pre>
+<p>Show the brand, last four digits and expiry when asking a returning customer to confirm which card to use. Showing nothing but "saved card" causes hesitation, especially for customers who have more than one.</p>
+
+<h2 id="s16"><span class="num">Section 16</span>Refunds and cancellation</h2>
+<p class="lede">Cancelling and refunding are different operations with different consequences. Choosing the wrong one costs money and confuses customers.</p>
+<h3>Which one applies</h3>
+<table>
+  <tr><th>Situation</th><th>Use</th><th>Why</th></tr>
+  <tr><td>Authorised but not captured</td><td>Cancel</td><td>Releases the hold. No entry on the customer's statement. No fee implications.</td></tr>
+  <tr><td>Captured, money taken</td><td>Refund</td><td>The only option. Appears as a separate credit on their statement.</td></tr>
+  <tr><td>Customer changed their mind before dispatch, manual capture in use</td><td>Cancel</td><td>Cleaner for both sides.</td></tr>
+  <tr><td>Intent is unconfirmed and abandoned</td><td>Cancel</td><td>Tidies your Dashboard. Optional but useful.</td></tr>
+</table>
+<h3>Issuing a refund</h3>
+<pre><code>const refund = await stripe.refunds.create({
+  payment_intent: intent.id,
+  amount: 500,            // optional; omit for a full refund
+  reason: 'requested_by_customer',
+  metadata: { refund_request_id: request.id },
+}, {
+  idempotencyKey: `refund-${request.id}`,
+});</code></pre>
+<p>Partial refunds are allowed and can be issued repeatedly up to the captured total. The idempotency key is derived from the refund request rather than the order, which allows several distinct refunds against one payment while still protecting each from duplication.</p>
+<h3>Things worth knowing</h3>
+<ul>
+  <li><b>Refunds take days to appear.</b> Typically five to ten business days depending on the issuer. Say so in your confirmation message, or you will field messages asking where the money is.</li>
+  <li><b>Fees are generally not returned.</b> A refunded payment usually still costs you the processing fee. For high-refund businesses this is a real line item, and it is an argument for manual capture.</li>
+  <li><b>Refunds can fail.</b> A closed card account is the usual cause. Subscribe to refund events rather than assuming success.</li>
+  <li><b>A refund is not a dispute defence.</b> Refunding after a dispute is opened does not automatically close it, and you may pay the dispute fee regardless. Refund early if you are going to.</li>
+</ul>
+<h3>Cancelling</h3>
+<pre><code>await stripe.paymentIntents.cancel(intent.id, {
+  cancellation_reason: 'requested_by_customer',
+});</code></pre>
+<p>Cancellation is only valid from certain statuses. A succeeded PaymentIntent cannot be cancelled; it can only be refunded. Attempting to cancel one produces an <code>invalid_request_error</code>, which is a case your code should distinguish rather than treating as a generic failure.</p>
+<h3>Disputes</h3>
+<p>A dispute, also called a chargeback, is the customer's bank reversing a payment on their behalf. It is not a refund and you do not control it.</p>
+<p>Subscribe to <code>charge.dispute.created</code> and route it to a human immediately. Disputes have evidence deadlines, and missing one means losing by default. Build the alerting even if you expect disputes to be rare, because a dispute that nobody noticed is the worst version of a rare event.</p>
+<p>The most effective dispute prevention is not a fraud rule. It is a recognisable statement descriptor, a clear refund policy, and responsive support. A meaningful share of disputes are customers who could not work out what a charge was and could not reach anyone to ask.</p>
+
+<h2 id="s17"><span class="num">Section 17</span>Testing</h2>
+<p class="lede">The happy path is the easiest thing to test and the least valuable. Everything below the first row of this table is where the defects actually live.</p>
+<h3>What to cover</h3>
+<table>
+  <tr><th>Scenario</th><th>How to trigger it</th><th>Expected behaviour</th></tr>
+  <tr><td>Successful payment</td><td>A standard test card</td><td>Status <code>succeeded</code>, webhook received, order fulfilled exactly once</td></tr>
+  <tr><td>Generic decline</td><td>A test card that always declines</td><td><code>card_error</code> surfaced to the customer, no fulfilment, intent back to <code>requires_payment_method</code></td></tr>
+  <tr><td>Fraudulent decline</td><td><code>pm_card_chargeDeclinedFraudulent</code> or the equivalent test card</td><td>No retry offered, generic message, internal flag raised</td></tr>
+  <tr><td>Insufficient funds</td><td>The dedicated test card</td><td>Customer told to try another card, retry permitted</td></tr>
+  <tr><td>Authentication required, completed</td><td>A 3D Secure test card</td><td>Passes through <code>requires_action</code> then succeeds</td></tr>
+  <tr><td>Authentication required, abandoned</td><td>Same card, dismiss the challenge</td><td>Stays <code>requires_action</code>, no fulfilment, intent still usable</td></tr>
+  <tr><td>Authentication failed</td><td>A test card where authentication fails</td><td>Returns to <code>requires_payment_method</code></td></tr>
+  <tr><td>Duplicate webhook</td><td><code>stripe trigger</code> twice, or redeliver from the Dashboard</td><td>Fulfilment happens once</td></tr>
+  <tr><td>Out-of-order webhooks</td><td>Queue two events and process in reverse</td><td>Final state correct regardless of order</td></tr>
+  <tr><td>Webhook endpoint down</td><td>Stop your server, trigger an event, restart</td><td>Retry delivers it, or reconciliation catches it</td></tr>
+  <tr><td>Network failure mid-confirm</td><td>Kill the connection in a test harness</td><td>Retry with the same idempotency key does not double charge</td></tr>
+  <tr><td>Amount changed after intent creation</td><td>Modify the basket, re-enter checkout</td><td>Intent updated, not duplicated, and the charged amount matches the order</td></tr>
+  <tr><td>Expired authorisation</td><td>Simulate by advancing your own timer logic</td><td>Alert fires before expiry, order handled deliberately</td></tr>
+</table>
+<h3>Testing webhooks locally</h3>
+<pre><code># Terminal 1
+stripe listen --forward-to localhost:4242/webhooks/stripe
+
+# Terminal 2
+stripe trigger payment_intent.succeeded
+stripe trigger payment_intent.payment_failed</code></pre>
+<p>The CLI prints a session signing secret. Use it in your local environment rather than the one from the Dashboard, which belongs to a different endpoint.</p>
+<h3>Automated coverage</h3>
+<p>Mock Stripe at the HTTP boundary rather than mocking your own wrapper. Mocking your wrapper tests that your wrapper calls your wrapper. Recording real test-mode responses and replaying them gives you fixtures that reflect the actual shape of the API, including the fields you forgot exist.</p>
+<p>Keep one small suite that runs against the real test API on a schedule. Mocks drift. A nightly run against test mode catches the day Stripe changes a default or deprecates a parameter, which is considerably better than finding out from a customer.</p>
+<h3>Load and concurrency</h3>
+<p>Two concurrency cases are worth a deliberate test. First, the same webhook event delivered to two workers simultaneously, which checks that your deduplication uses a real unique constraint. Second, a reconciliation run executing while webhooks are being processed, which checks that <code>fulfilOnce</code> is genuinely safe under concurrency rather than safe in the usual ordering.</p>
+
+<h2 id="s18"><span class="num">Section 18</span>Going live</h2>
+<p class="lede">A checklist, in the order that the items tend to cause problems.</p>
+<h3>Credentials</h3>
+<ul>
+  <li>Live keys are in a secrets manager or environment variables, never in the repository.</li>
+  <li>Use a restricted API key with only the permissions your code needs, rather than the unrestricted secret key.</li>
+  <li>Key rotation has been tested at least once, so you know the procedure before you need it urgently.</li>
+  <li>Test and live webhook endpoints have separate signing secrets, and the right one is deployed to each environment.</li>
+  <li>No key appears in logs. Check your request logging on payment routes specifically.</li>
+</ul>
+<h3>Webhooks</h3>
+<ul>
+  <li>The live endpoint is registered and reachable over HTTPS with a valid certificate.</li>
+  <li>Signature verification is enforced, and a request with a bad signature is rejected with a 400.</li>
+  <li>The handler acknowledges within a second or two and processes asynchronously.</li>
+  <li>Deduplication is backed by a unique constraint on event ID.</li>
+  <li>You are subscribed to refund and dispute events, not only payment events.</li>
+  <li>Failures alert someone. A silently failing webhook handler is the quietest way to lose orders.</li>
+</ul>
+<h3>Reconciliation and monitoring</h3>
+<ul>
+  <li>The reconciliation job runs on a schedule and its repair count is a monitored metric.</li>
+  <li>Alerts exist for repaired payments, webhook error rate, queue age and unmatched orders.</li>
+  <li>Decline rate is tracked by decline code, not only in aggregate.</li>
+  <li>Someone owns the dispute alert and knows what to do when it fires.</li>
+</ul>
+<h3>Customer-facing details</h3>
+<ul>
+  <li>Statement descriptor is recognisable. Test by making a real small payment and looking at your own statement.</li>
+  <li>Error messages distinguish clearly between "your card was declined, try another" and "something went wrong on our side, you have not been charged".</li>
+  <li>Refund timescales are stated where customers will see them.</li>
+  <li>If you save cards, consent is explicit and recorded.</li>
+  <li>The payment step allows retry in place after a decline.</li>
+</ul>
+<h3>Operational readiness</h3>
+<ul>
+  <li>A runbook exists for the three most likely incidents: webhook endpoint down, elevated decline rate, and a payment succeeded with no order created.</li>
+  <li>Support staff can find a payment from an order reference and vice versa, which is what the metadata is for.</li>
+  <li>Someone other than the person who built it has been walked through the flow.</li>
+</ul>
+<h3>The first week</h3>
+<p>Watch the reconciliation repair count daily rather than relying on the alert. In the first week it is the measure most likely to reveal a gap between your test assumptions and production reality. A repair count that is consistently zero is the signal that your primary path is sound.</p>
+
+<h2 id="s19"><span class="num">Section 19</span>A reference implementation</h2>
+<p class="lede">Everything above, assembled. This section walks through a complete server-side implementation with the reasoning attached to each decision, because the individual pieces are simpler than the job of fitting them together.</p>
+<h3>The shape of it</h3>
+<p>Five components, each with one responsibility.</p>
+<table>
+  <tr><th>Component</th><th>Responsibility</th></tr>
+  <tr><td>Payment service</td><td>Creates and updates PaymentIntents. The only place that calls Stripe for payment creation.</td></tr>
+  <tr><td>Webhook receiver</td><td>Verifies signatures, enqueues events, returns 200 fast. No business logic.</td></tr>
+  <tr><td>Event processor</td><td>Consumes the queue, deduplicates, routes to handlers.</td></tr>
+  <tr><td>Fulfilment service</td><td>Does the thing that must happen exactly once. Idempotent by construction.</td></tr>
+  <tr><td>Reconciler</td><td>Scheduled job comparing Stripe's view with yours.</td></tr>
+</table>
+<p>The separation matters. A webhook receiver that fulfils orders inline is the most common design in small integrations and the hardest one to make reliable, because it couples delivery latency to business logic duration.</p>
+<h3>The data you need to store</h3>
+<pre><code>orders
+  id                      primary key
+  reference               human-readable, shown to the customer
+  amount_minor            integer
+  currency                char(3)
+  status                  pending | paid | failed | refunded | cancelled
+  payment_intent_id       nullable, unique
+  idempotency_key         the key used to create the intent
+  paid_at                 nullable timestamp
+  fulfilled_at            nullable timestamp
+
+processed_events
+  id                      Stripe event ID, primary key
+  type                    event type
+  received_at             timestamp
+  processed_at            nullable timestamp
+
+payment_attempts
+  id                      primary key
+  order_id                foreign key
+  payment_intent_id
+  status                  the intent status at the time
+  decline_code            nullable
+  error_code              nullable
+  created_at</code></pre>
+<p>The <code>payment_attempts</code> table is the one teams skip and later wish they had. Without it you cannot answer how many times a customer tried before succeeding, which declines dominate, or whether a particular issuer is behaving oddly. The data is not recoverable retrospectively.</p>
+<p><code>payment_intent_id</code> on orders should carry a unique constraint. It is your database-level protection against two orders claiming the same payment.</p>
+<h3>Payment service</h3>
+<pre><code>class PaymentService {
+  constructor(stripe, db, logger) {
+    this.stripe = stripe;
+    this.db = db;
+    this.logger = logger;
+  }
+
+  async intentForOrder(order) {
+    if (order.paymentIntentId) {
+      const existing = await this.reuseIfPossible(order);
+      if (existing) return existing;
+    }
+    return this.createFor(order);
+  }
+
+  async reuseIfPossible(order) {
+    let intent;
+    try {
+      intent = await this.stripe.paymentIntents.retrieve(order.paymentIntentId);
+    } catch (err) {
+      this.logger.warn('intent_retrieve_failed', {
+        orderId: order.id, err: err.message,
+      });
+      return null;
+    }
+
+    const reusable = [
+      'requires_payment_method',
+      'requires_confirmation',
+      'requires_action',
+    ];
+    if (!reusable.includes(intent.status)) return null;
+
+    if (intent.amount !== order.amountMinor ||
+        intent.currency !== order.currency.toLowerCase()) {
+      intent = await this.stripe.paymentIntents.update(intent.id, {
+        amount: order.amountMinor,
+        currency: order.currency.toLowerCase(),
+      });
+    }
+    return intent;
+  }
+
+  async createFor(order) {
+    const key = order.idempotencyKey ?? `pi-create-${order.id}`;
+
+    const intent = await this.stripe.paymentIntents.create({
+      amount: order.amountMinor,
+      currency: order.currency.toLowerCase(),
+      customer: order.stripeCustomerId ?? undefined,
+      description: `Order ${order.reference}`,
+      statement_descriptor_suffix: STATEMENT_SUFFIX,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        order_id: String(order.id),
+        order_reference: order.reference,
+        environment: process.env.APP_ENV,
+      },
+    }, { idempotencyKey: key });
+
+    await this.db.orders.update(order.id, {
+      paymentIntentId: intent.id,
+      idempotencyKey: key,
+    });
+
+    return intent;
+  }
+}</code></pre>
+<p>Two details worth noting. The idempotency key is persisted on the order, so a retry after a crash uses the same key rather than generating a new one. And <code>reuseIfPossible</code> returns null rather than throwing when retrieval fails, so a transient Stripe problem produces a new intent rather than a failed checkout.</p>
+<h3>Webhook receiver</h3>
+<pre><code>app.post('/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const signature = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body, signature, process.env.STRIPE_WEBHOOK_SECRET,
+      );
+    } catch (err) {
+      logger.warn('webhook_bad_signature', { message: err.message });
+      return res.status(400).send('Invalid signature');
+    }
+
+    try {
+      await queue.publish('stripe-events', {
+        id: event.id, type: event.type, objectId: event.data.object.id,
+      });
+    } catch (err) {
+      // Could not enqueue. Fail so Stripe retries rather than
+      // acknowledging an event we have not stored anywhere.
+      logger.error('webhook_enqueue_failed', { id: event.id });
+      return res.status(500).send('Could not enqueue');
+    }
+
+    return res.json({ received: true });
+  });</code></pre>
+<div class="tip"><b>Note what is published to the queue.</b> The event ID, type and object ID, not the full payload. The processor re-reads the object from the API anyway, because the embedded snapshot can be stale. Keeping the queue message small also keeps it well inside any message size limit.</div>
+<h3>Event processor</h3>
+<pre><code>const handlers = {
+  'payment_intent.succeeded': onSucceeded,
+  'payment_intent.payment_failed': onFailed,
+  'payment_intent.processing': onProcessing,
+  'payment_intent.canceled': onCanceled,
+  'charge.refunded': onRefunded,
+  'charge.dispute.created': onDisputeOpened,
+};
+
+async function processEvent(message) {
+  const claimed = await db.processedEvents.insertIfAbsent({
+    id: message.id, type: message.type, receivedAt: new Date(),
+  });
+
+  if (!claimed) {
+    logger.info('event_duplicate', { id: message.id });
+    return;
+  }
+
+  const handler = handlers[message.type];
+  if (!handler) {
+    logger.info('event_unhandled', { type: message.type });
+    await db.processedEvents.markProcessed(message.id);
+    return;
+  }
+
+  try {
+    await handler(message);
+    await db.processedEvents.markProcessed(message.id);
+  } catch (err) {
+    // Release the claim so redelivery can retry.
+    await db.processedEvents.delete(message.id);
+    throw err;
+  }
+}</code></pre>
+<p>The unhandled case is marked processed rather than left open. Events you have deliberately not subscribed to should not accumulate as apparent failures.</p>
+<h3>Handlers</h3>
+<pre><code>async function onSucceeded({ objectId }) {
+  // Re-read. The event snapshot may be stale or out of order.
+  const intent = await stripe.paymentIntents.retrieve(objectId);
+  if (intent.status !== 'succeeded') {
+    logger.info('succeeded_event_superseded', {
+      id: intent.id, status: intent.status,
+    });
+    return;
+  }
+
+  const orderId = intent.metadata.order_id;
+  if (!orderId) {
+    logger.error('payment_without_order_id', { id: intent.id });
+    alerting.fire('payment_without_order_id', { intentId: intent.id });
+    return;
+  }
+
+  await recordAttempt(orderId, intent, null);
+  await fulfilment.fulfilOnce(orderId, intent.id);
+}
+
+async function onFailed({ objectId }) {
+  const intent = await stripe.paymentIntents.retrieve(objectId);
+  const error = intent.last_payment_error ?? {};
+
+  await recordAttempt(intent.metadata.order_id, intent, error);
+  await reservations.releaseFor(intent.metadata.order_id);
+
+  if (intent.metadata.off_session === 'true') {
+    await notifyCustomerOfFailedPayment(intent);
+  }
+}</code></pre>
+<h3>Fulfilment, made idempotent</h3>
+<pre><code>async function fulfilOnce(orderId, paymentIntentId) {
+  // A conditional update is the lock. Only one caller wins.
+  const claimed = await db.orders.updateWhere(
+    { id: orderId, status: 'pending' },
+    { status: 'paid', paymentIntentId, paidAt: new Date() },
+  );
+
+  if (!claimed) {
+    const order = await db.orders.find(orderId);
+    if (order.paymentIntentId && order.paymentIntentId !== paymentIntentId) {
+      // Two different payments against one order. Needs a human.
+      alerting.fire('order_paid_twice', {
+        orderId, existing: order.paymentIntentId, incoming: paymentIntentId,
+      });
+    }
+    logger.info('fulfilment_already_done', { orderId });
+    return;
+  }
+
+  await dispatchToWarehouse(orderId);
+  await sendConfirmationEmail(orderId);
+  await db.orders.update(orderId, { fulfilledAt: new Date() });
+}</code></pre>
+<p>The conditional update is the important line. It uses the database to decide who wins, which works correctly when the webhook processor and the reconciler run at the same moment on different machines. A read followed by a write does not.</p>
+<p>The <code>order_paid_twice</code> alert catches a genuine and expensive failure: two successful payments for one order. It should never fire. If it does, somebody needs to refund one of them, and you want to know within minutes rather than at month end.</p>
+<h3>Wiring it together</h3>
+<pre><code>// Checkout endpoint
+app.post('/api/checkout', requireAuth, async (req, res) => {
+  const order = await orders.createOrFetchPending(req.user, req.body.basket);
+  const intent = await paymentService.intentForOrder(order);
+
+  res.json({
+    orderReference: order.reference,
+    clientSecret: intent.client_secret,
+    amount: intent.amount,
+    currency: intent.currency,
+  });
+});
+
+// Scheduled
+cron.schedule('*/15 * * * *', () => reconciler.run({ lookbackMinutes: 180 }));
+cron.schedule('0 3 * * *', () => reconciler.reverseCheck({ days: 2 }));</code></pre>
+<p>That is the whole integration. Roughly two hundred lines of application code, most of it concerned with failure rather than with payment.</p>
+
+<h2 id="s20"><span class="num">Section 20</span>Troubleshooting</h2>
+<p class="lede">Symptoms you will actually encounter, with the causes in rough order of likelihood.</p>
+<h3>Webhook signature verification keeps failing</h3>
+<ol>
+  <li><b>The body is being parsed before your handler sees it.</b> This is the cause roughly nine times in ten. Stripe signs the raw bytes. A global JSON body parser mounted before your webhook route destroys them. Mount a raw body parser on the webhook route specifically, and make sure route ordering puts it first.</li>
+  <li><b>Wrong signing secret.</b> The Dashboard endpoint secret, the CLI session secret and a second environment's secret are all different. They all look like <code>whsec_...</code>.</li>
+  <li><b>A proxy is rewriting the body.</b> Some gateways normalise JSON or re-encode character sets. Check what actually arrives at your process, not what you sent.</li>
+  <li><b>Clock skew.</b> Verification includes a timestamp tolerance. A server whose clock is far out will reject valid requests.</li>
+</ol>
+<h3>Payments succeed but orders are not created</h3>
+<ol>
+  <li><b>Your handler returns 200 while failing internally.</b> Stripe sees success and never retries. Check whether your handler catches exceptions and swallows them. This is why reconciliation exists.</li>
+  <li><b>Metadata is missing.</b> If <code>order_id</code> is absent, the handler has nothing to act on. Check that every creation path sets it, including any admin tools or scripts.</li>
+  <li><b>You are fulfilling from the browser return page.</b> Customers who close the tab never trigger it.</li>
+  <li><b>The event type is not subscribed.</b> Easy to miss after adding a new flow that produces a different event.</li>
+</ol>
+<h3>Some customers always fail at the payment step</h3>
+<ol>
+  <li><b><code>requires_action</code> is being treated as a failure.</b> This affects European customers disproportionately and can look like a regional outage. Section 8 covers it.</li>
+  <li><b>Your return URL is wrong in one environment.</b> A staging URL in production configuration breaks the redirect for every authenticated payment.</li>
+  <li><b>Content security policy is blocking the 3D Secure iframe.</b> The browser console will say so. Easy to introduce with a CSP tightening that nobody connected to payments.</li>
+</ol>
+<h3>Duplicate charges</h3>
+<ol>
+  <li><b>Idempotency keys generated at call time.</b> A random key per attempt provides no protection. The key must be derived from the operation.</li>
+  <li><b>A new PaymentIntent created per attempt.</b> If a decline causes your code to create a fresh intent and the customer's second card succeeds on the first intent too, you have two payments. Reuse the intent.</li>
+  <li><b>Fulfilment not guarded.</b> Two deliveries of one event, both fulfilling, is not a duplicate charge but it is a duplicate dispatch, which costs the same.</li>
+</ol>
+<h3>The amount charged does not match the order</h3>
+<ol>
+  <li><b>The basket changed after the intent was created.</b> Update the intent, or recreate it, before confirmation.</li>
+  <li><b>Minor unit conversion applied twice,</b> or not at all. A charge of exactly 100 times too much or too little is diagnostic.</li>
+  <li><b>Zero-decimal currency treated as decimal.</b> JPY amounts divided by 100 somewhere in your code.</li>
+</ol>
+<h3>Everything works in test and fails in live</h3>
+<ol>
+  <li><b>Live keys not deployed,</b> or a test key in live configuration. A test key against live endpoints fails authentication.</li>
+  <li><b>Payment methods not enabled in live mode.</b> Dashboard settings are per mode.</li>
+  <li><b>The live webhook endpoint was never registered,</b> or points at a URL that is not reachable from outside your network.</li>
+  <li><b>Account verification incomplete.</b> Some capabilities are restricted until Stripe has verified the business.</li>
+</ol>
+<h3>How to investigate any of these</h3>
+<p>Start with the Dashboard event log and the PaymentIntent itself, not with your own logs. The PaymentIntent records every attempt, the status at each point and the error on each failure. That is the authoritative account of what happened, and comparing it with your logs tells you where your system's view diverged.</p>
+
+<h2 id="s21"><span class="num">Section 21</span>Multiple currencies</h2>
+<p class="lede">Accepting more than one currency introduces problems that have nothing to do with the payment API and everything to do with arithmetic, settlement and presentation.</p>
+<h3>Decide what the price actually is</h3>
+<p>There are two models and they behave differently.</p>
+<table>
+  <tr><th>Model</th><th>How it works</th><th>Trade-off</th></tr>
+  <tr><td>Fixed prices per currency</td><td>You set £20, €24 and $25 independently.</td><td>Predictable for customers and for your accounting. Requires maintenance when rates move.</td></tr>
+  <tr><td>Converted at checkout</td><td>One base price, converted at a rate you fetch.</td><td>Always current. Produces odd-looking prices, and you carry the rate risk between quoting and settling.</td></tr>
+</table>
+<p>Fixed prices are usually the better choice for anything customer-facing. People notice when a price changes by forty pence between visits, and rounded prices convert better.</p>
+<h3>Zero-decimal currencies</h3>
+<p>Most currencies divide into 100 minor units. Several do not. JPY and KRW are the common examples. An amount of <code>1000</code> in JPY is one thousand yen.</p>
+<p>Never hardcode a divisor of 100. Use a currency table with the exponent, and route every conversion through one function.</p>
+<pre><code>const EXPONENT = { JPY: 0, KRW: 0, BHD: 3, KWD: 3, /* default 2 */ };
+
+function toMinorUnits(amount, currency) {
+  const exp = EXPONENT[currency] ?? 2;
+  return Math.round(amount * 10 ** exp);
+}
+
+function toDisplay(minor, currency) {
+  const exp = EXPONENT[currency] ?? 2;
+  return (minor / 10 ** exp).toFixed(exp);
+}</code></pre>
+<p>Three-decimal currencies such as KWD and BHD exist and have their own handling rules at the network level. If you plan to accept them, read the specific guidance rather than assuming the general pattern holds.</p>
+<h3>Settlement</h3>
+<p>Charging in a currency you do not hold a balance in means a conversion happens somewhere, and it costs something. Where that conversion occurs, and who bears the spread, depends on your Stripe account configuration and the currencies involved.</p>
+<p>Two practical consequences. First, your revenue in your reporting currency is not the sum of your charge amounts, so build reporting against the balance transactions rather than the charges. Second, refunds in a converted currency may not return exactly what the customer paid, because the rate has moved. Expect occasional support contacts about small discrepancies and have an answer ready.</p>
+<h3>Presentation</h3>
+<ul>
+  <li>Show the currency explicitly. A bare "$25" is ambiguous across at least a dozen currencies.</li>
+  <li>Format according to the customer's locale, not yours. Decimal separators differ.</li>
+  <li>If you convert, say so and show the rate. Customers who feel a rate was hidden dispute more often.</li>
+  <li>State the charging currency before the payment step, not after. A customer who expected to pay in euros and sees dollars will abandon.</li>
+</ul>
+
+<h2 id="s22"><span class="num">Section 22</span>Monitoring payments in production</h2>
+<p class="lede">Payment systems fail quietly. A broken checkout produces no errors in your application logs if the failure is a decline, and no alert at all if the failure is a webhook that returns 200 while doing nothing.</p>
+<h3>The four metrics that matter</h3>
+<table>
+  <tr><th>Metric</th><th>Why</th><th>Alert when</th></tr>
+  <tr><td>Payment success rate</td><td>The headline number. Attempts that reach <code>succeeded</code> divided by attempts confirmed.</td><td>Drops more than 5 percentage points against the same hour last week</td></tr>
+  <tr><td>Reconciliation repair count</td><td>Direct measure of how often your primary path misses a payment.</td><td>Above zero, for a first look. Above three in an hour, page someone.</td></tr>
+  <tr><td>Webhook processing lag</td><td>Age of the oldest unprocessed event.</td><td>Above five minutes</td></tr>
+  <tr><td>Time from payment to fulfilment</td><td>End-to-end, measured as the customer experiences it.</td><td>p95 above your stated promise</td></tr>
+</table>
+<h3>Why aggregate success rate is not enough</h3>
+<p>A single success rate hides the failures that matter. A 3% drop could be one issuer having a bad day, which needs no action, or your authentication handling breaking for one card brand, which needs an immediate rollback.</p>
+<p>Break the number down by at least three dimensions: card brand, issuing country, and whether authentication was required. A failure concentrated in one slice is a different problem from a uniform drop, and the slice usually names the cause.</p>
+<h3>Logging that is useful later</h3>
+<p>Log one structured line per payment attempt with a consistent shape.</p>
+<pre><code>{
+  "event": "payment_attempt",
+  "order_id": "10482",
+  "payment_intent_id": "pi_3Oz...",
+  "status": "requires_action",
+  "amount_minor": 2000,
+  "currency": "gbp",
+  "card_brand": "visa",
+  "card_country": "GB",
+  "authentication_required": true,
+  "decline_code": null,
+  "attempt_number": 1,
+  "latency_ms": 840
+}</code></pre>
+<p>This one line answers most questions you will later want to ask without needing to reconstruct anything. Note what is absent: no card number, no client secret, no full name, no email. Payment logs end up in systems with broader access than your database, and they are retained for a long time.</p>
+<div class="warn"><b>Never log the client secret or any part of a card number.</b> It is easy to do accidentally by logging a whole request or response object. Add a redaction layer at the logger rather than relying on every call site to remember.</div>
+<h3>A dashboard worth having</h3>
+<p>Six panels, in this order, is usually enough.</p>
+<ol>
+  <li>Successful payments per hour, with last week overlaid.</li>
+  <li>Success rate, split by authentication required or not.</li>
+  <li>Top ten decline codes over the last 24 hours.</li>
+  <li>Reconciliation repairs, as a bar per run.</li>
+  <li>Webhook queue depth and oldest message age.</li>
+  <li>Payment to fulfilment latency, p50 and p95.</li>
+</ol>
+<p>Put it where someone sees it daily rather than only during an incident. Most payment problems are visible on this dashboard for hours before a customer reports them.</p>
+<h3>What to rehearse</h3>
+<p>Two drills are worth running before you need them. First, disable your webhook endpoint for ten minutes in a staging environment and confirm that reconciliation recovers every payment without manual intervention. Second, walk a support engineer through finding a specific payment from nothing but a customer's email address and an approximate date. If either exercise takes longer than you expected, fix that before launch rather than during an incident.</p>
+
+<h2 id="a1"><span class="num">Appendix A</span>Status reference</h2>
+<table>
+  <tr><th>Status</th><th>Funds</th><th>Reached from</th><th>Can move to</th></tr>
+  <tr><td><code>requires_payment_method</code></td><td>None</td><td>Creation, or a failed attempt</td><td><code>requires_confirmation</code>, <code>processing</code>, <code>requires_action</code>, <code>canceled</code></td></tr>
+  <tr><td><code>requires_confirmation</code></td><td>None</td><td>A payment method attached without confirmation</td><td><code>processing</code>, <code>requires_action</code>, <code>requires_payment_method</code>, <code>canceled</code></td></tr>
+  <tr><td><code>requires_action</code></td><td>None</td><td>Confirmation where the issuer requires authentication</td><td><code>processing</code>, <code>succeeded</code>, <code>requires_payment_method</code>, <code>canceled</code></td></tr>
+  <tr><td><code>processing</code></td><td>Pending</td><td>Confirmation of an asynchronous method</td><td><code>succeeded</code>, <code>requires_payment_method</code></td></tr>
+  <tr><td><code>requires_capture</code></td><td>Authorised, not taken</td><td>Confirmation with manual capture</td><td><code>succeeded</code>, <code>canceled</code></td></tr>
+  <tr><td><code>succeeded</code></td><td>In your balance</td><td>Successful confirmation or capture</td><td>Terminal. Refund only.</td></tr>
+  <tr><td><code>canceled</code></td><td>None, any hold released</td><td>Explicit cancellation, or automatic after excessive confirmation attempts</td><td>Terminal</td></tr>
+</table>
+
+<h2 id="a2"><span class="num">Appendix B</span>Error reference</h2>
+<table>
+  <tr><th>Type</th><th>Typical HTTP</th><th>Retry</th><th>Alert a human?</th></tr>
+  <tr><td><code>card_error</code></td><td>402</td><td>Only by the customer, with different details</td><td>No. Log at info.</td></tr>
+  <tr><td><code>invalid_request_error</code></td><td>400, 404</td><td>No</td><td>Yes. This is your bug.</td></tr>
+  <tr><td><code>idempotency_error</code></td><td>400</td><td>No</td><td>Yes. Key derivation bug.</td></tr>
+  <tr><td><code>api_error</code></td><td>500, 502, 503, 504</td><td>Yes, backoff, same key</td><td>Only if sustained</td></tr>
+  <tr><td>Rate limit</td><td>429</td><td>Yes, exponential backoff</td><td>Only if sustained</td></tr>
+  <tr><td>Authentication error</td><td>401</td><td>No</td><td>Yes, critical</td></tr>
+  <tr><td>Permission error</td><td>403</td><td>No</td><td>Yes</td></tr>
+  <tr><td>Connection error</td><td>n/a</td><td>Yes, same key, then verify by retrieving</td><td>Only if sustained</td></tr>
+</table>
+
+<h2 id="a3"><span class="num">Appendix C</span>Event reference</h2>
+<table>
+  <tr><th>Event</th><th>Subscribe</th><th>Handler should</th></tr>
+  <tr><td><code>payment_intent.succeeded</code></td><td>Always</td><td>Re-read the intent, then fulfil exactly once</td></tr>
+  <tr><td><code>payment_intent.payment_failed</code></td><td>Always</td><td>Record the attempt, release reservations, notify if off-session</td></tr>
+  <tr><td><code>payment_intent.processing</code></td><td>If you accept asynchronous methods</td><td>Show pending. Do not fulfil.</td></tr>
+  <tr><td><code>payment_intent.canceled</code></td><td>If you use manual capture</td><td>Close the order, release reservations</td></tr>
+  <tr><td><code>payment_intent.requires_action</code></td><td>Optional</td><td>Usually nothing. Useful for drop-off analysis.</td></tr>
+  <tr><td><code>payment_intent.amount_capturable_updated</code></td><td>If you use manual capture</td><td>Record that funds are held and start the expiry timer</td></tr>
+  <tr><td><code>charge.refunded</code></td><td>Always</td><td>Update records, including for Dashboard-initiated refunds</td></tr>
+  <tr><td><code>charge.dispute.created</code></td><td>Always</td><td>Alert a human immediately. Deadlines apply.</td></tr>
+  <tr><td><code>charge.dispute.closed</code></td><td>Always</td><td>Record the outcome</td></tr>
+  <tr><td><code>payment_method.attached</code></td><td>If you save cards</td><td>Update the customer's stored methods</td></tr>
+</table>
+
+<h2 id="a4"><span class="num">Appendix D</span>Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td>Authorisation</td><td>The issuer reserving funds against the customer's account without moving them.</td></tr>
+  <tr><td>Capture</td><td>Taking funds that were previously authorised.</td></tr>
+  <tr><td>Charge</td><td>The Stripe object recording an actual attempt to move money. Produced by a PaymentIntent.</td></tr>
+  <tr><td>Client secret</td><td>A per-intent string allowing client-side code to act on that one PaymentIntent.</td></tr>
+  <tr><td>Decline</td><td>The issuer refusing a payment. A normal outcome, not a system error.</td></tr>
+  <tr><td>Dispute</td><td>A customer's bank reversing a payment on their behalf. Also called a chargeback.</td></tr>
+  <tr><td>Idempotency key</td><td>A client-supplied identifier letting a request be retried without repeating its effect.</td></tr>
+  <tr><td>Issuer</td><td>The bank that issued the customer's card and decides whether to approve a payment.</td></tr>
+  <tr><td>Minor units</td><td>The smallest denomination of a currency. 100 pence to the pound.</td></tr>
+  <tr><td>Off-session</td><td>A payment attempted when the customer is not present to authenticate.</td></tr>
+  <tr><td>PaymentIntent</td><td>An object tracking a payment across all attempts, producing at most one successful charge.</td></tr>
+  <tr><td>PaymentMethod</td><td>An object representing the instrument used, such as a card.</td></tr>
+  <tr><td>SCA</td><td>Strong Customer Authentication. European regulation requiring customer verification on many online payments.</td></tr>
+  <tr><td>SetupIntent</td><td>Like a PaymentIntent but for saving a payment method without charging it.</td></tr>
+  <tr><td>Statement descriptor</td><td>The text identifying you on the customer's bank statement.</td></tr>
+  <tr><td>3D Secure</td><td>The protocol used to authenticate a cardholder with their issuer during a payment.</td></tr>
+  <tr><td>Webhook</td><td>An HTTP request from Stripe to your server reporting that something happened.</td></tr>
+</table>
+
+</article>
+</div>
+
+<footer><div class="foot">
+  <p><b>Asim Raza</b> · Technical Content Writer · <a href="mailto:asim74726@gmail.com">asim74726@gmail.com</a> · <a href="https://www.linkedin.com/in/asim-raza18a">LinkedIn</a></p>
+  <p><a href="index.html">← Back to the full portfolio</a></p>
+  <p class="fine">This document is an original writing sample by Asim Raza, produced to demonstrate technical documentation practice. It is not official Stripe documentation, is not affiliated with or endorsed by Stripe, and should not be relied on as a specification. API behaviour described here was checked against Stripe's public documentation in November 2026 and may since have changed. All trademarks are the property of their respective owners.</p>
+</div></footer>
+
+</body>
+</html>

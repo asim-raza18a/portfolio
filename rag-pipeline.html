@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrating Stripe Payment Intents, Implementation Guide | Asim Raza</title>
+<style>
+:root{
+  --ink:#15191c; --ink-2:#434a52; --ink-3:#6f7880;
+  --line:#e4e1da; --line-2:#efece5;
+  --paper:#fdfcfa; --paper-2:#f8f6f1; --paper-3:#f2efe8;
+  --doc-bg:#fffefc; --doc-line:#e7e3da;
+  --accent:#176b5d; --accent-soft:#e4efec; --accent-line:#bcd8d1;
+  --gold:#8f6418; --gold-soft:#fbf3e3; --gold-line:#ecdcbb;
+  --red:#8c2f22; --red-soft:#fbeeec; --red-line:#eecfc9;
+  --code-bg:#1a1f24; --code-fg:#e4e8ee;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ink:#e9e7e2; --ink-2:#b2aea6; --ink-3:#857f76;
+    --line:#2b3036; --line-2:#242930;
+    --paper:#15181c; --paper-2:#1a1e23; --paper-3:#20252b;
+    --doc-bg:#191d22; --doc-line:#2b3036;
+    --accent:#63baa9; --accent-soft:#16302b; --accent-line:#255349;
+    --gold:#d9ac63; --gold-soft:#2a2316; --gold-line:#4a3c22;
+    --red:#e0897c; --red-soft:#2d1a17; --red-line:#4d2b25;
+    --code-bg:#0f1317; --code-fg:#dbe1e8;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.72;-webkit-font-smoothing:antialiased}
+
+.topbar{border-bottom:1px solid var(--line);background:var(--paper-2);font-family:var(--sans);font-size:13.5px}
+.topbar div{max-width:1240px;margin:0 auto;padding:11px 32px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--ink-3)}
+.topbar a{color:var(--accent);text-decoration:none}
+
+.cover{border-bottom:1px solid var(--line)}
+.cover-in{max-width:1240px;margin:0 auto;padding:56px 32px 42px}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 16px}
+h1{font-size:44px;line-height:1.12;margin:0 0 12px;font-weight:600;letter-spacing:-.015em;max-width:860px}
+.sub{font-family:var(--sans);font-size:19px;color:var(--ink-2);margin:0 0 28px;max-width:700px;line-height:1.5}
+.facts{font-family:var(--sans);font-size:13.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:8px 28px;border-top:1px solid var(--line-2);padding-top:20px}
+.facts b{color:var(--ink);font-weight:650}
+
+.note{background:var(--gold-soft);border-top:1px solid var(--gold-line);border-bottom:1px solid var(--gold-line);font-family:var(--sans)}
+.note p{max-width:1240px;margin:0 auto;padding:14px 32px;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.note b{color:var(--gold)}
+
+.wrap{max-width:1240px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:260px 1fr;gap:56px;align-items:start}
+.toc{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:36px 0;font-family:var(--sans);font-size:13.5px}
+.toc p.t{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 12px}
+.toc a{display:block;padding:5px 10px;border-radius:6px;color:var(--ink-2);text-decoration:none;line-height:1.4}
+.toc a:hover{background:var(--paper-3);color:var(--ink)}
+.toc a.app{color:var(--ink-3);font-size:13px}
+.toc .grp{margin-top:14px;padding-top:10px;border-top:1px solid var(--line-2)}
+
+article{padding:36px 0 100px;min-width:0;max-width:820px}
+h2{font-size:30px;margin:52px 0 6px;font-weight:600;letter-spacing:-.012em;scroll-margin-top:16px;padding-top:18px;border-top:2px solid var(--accent)}
+h2:first-child{margin-top:0}
+h2 .num{font-family:var(--sans);font-size:13px;color:var(--accent);display:block;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+h3{font-family:var(--sans);font-size:20px;margin:34px 0 10px;font-weight:650;letter-spacing:-.008em;scroll-margin-top:16px}
+h4{font-family:var(--sans);font-size:16px;margin:26px 0 8px;font-weight:650}
+h5{font-family:var(--sans);font-size:12px;letter-spacing:.09em;text-transform:uppercase;margin:24px 0 8px;font-weight:700;color:var(--ink-3)}
+p{margin:0 0 16px}
+ul,ol{margin:0 0 16px;padding-left:24px}
+li{margin-bottom:8px}
+code{font-family:var(--mono);font-size:14px;background:var(--paper-3);padding:1.5px 5px;border-radius:4px;border:1px solid var(--line-2)}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.62;background:var(--code-bg);color:var(--code-fg);padding:18px 20px;border-radius:9px;overflow-x:auto;margin:0 0 18px}
+pre code{background:none;border:0;padding:0;color:inherit;font-size:13.5px}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:14.5px;margin:0 0 20px}
+th{text-align:left;border-bottom:2px solid var(--accent);padding:9px 12px 9px 0;font-weight:650;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+td{border-bottom:1px solid var(--line-2);padding:10px 12px 10px 0;vertical-align:top}
+blockquote{margin:0 0 18px;padding:14px 18px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-family:var(--sans);font-size:15.5px;color:var(--ink)}
+.warn{font-family:var(--sans);font-size:15px;background:var(--red-soft);border:1px solid var(--red-line);border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 18px}
+.warn b{color:var(--red)}
+.tip{font-family:var(--sans);font-size:15px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:8px;padding:14px 18px;margin:0 0 18px}
+.tip b{color:var(--gold)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+.lede{font-size:19px;color:var(--ink-2);line-height:1.62}
+footer{border-top:1px solid var(--line);background:var(--paper-2);font-family:var(--sans)}
+.foot{max-width:1240px;margin:0 auto;padding:40px 32px 54px;font-size:14px;color:var(--ink-2)}
+.foot a{color:var(--accent)}
+.foot .fine{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3);max-width:760px;line-height:1.6}
+@media (max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 20px}
+  .toc{position:static;max-height:none;padding:20px 0 0;border-bottom:1px solid var(--line)}
+  .cover-in{padding:36px 20px 28px}
+  h1{font-size:31px}
+  article{padding:26px 0 70px}
+  h2{font-size:25px}
+  .note p,.topbar div,.foot{padding-left:20px;padding-right:20px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div>
+  <span>Sample document · Asim Raza, Technical Content Writer</span>
+  <span><a href="index.html">← Back to portfolio</a></span>
+</div></div>
+
+<header class="cover"><div class="cover-in">
+  <p class="kicker">Engineering guide · AI platform documentation</p>
+  <h1>Building and operating a production RAG pipeline</h1>
+  <p class="sub">A complete guide to retrieval-augmented generation for teams moving past a prototype, covering ingestion, chunking, retrieval, reranking, evaluation, observability and the failure modes that only appear once real users arrive.</p>
+  <div class="facts">
+    <span><b>Audience</b> Backend, ML and platform engineers</span>
+    <span><b>Assumed knowledge</b> Python, APIs, basic familiarity with embeddings</span>
+    <span><b>Length</b> 27 sections, 4 appendices</span>
+    <span><b>Written</b> November 2026</span>
+  </div>
+</div></header>
+
+<div class="note"><p><b>About this sample.</b> This is a portfolio piece written to demonstrate technical documentation of a real, open stack. Product and model names are real and publicly documented, which lets you check the accuracy of the writing against the source. Nothing here is affiliated with or endorsed by the vendors named. Figures and behaviour were checked against public documentation in November 2026. This field moves quickly, so verify against current sources before building on it.</p></div>
+
+<div class="wrap">
+<nav class="toc">
+  <p class="t">Contents</p>
+  <a href="#s1">1. Who this is for</a>
+  <a href="#s2">2. Is RAG the right tool?</a>
+  <a href="#s3">3. Architecture overview</a>
+  <a href="#s4">4. Ingestion and parsing</a>
+  <a href="#s5">5. Chunking</a>
+  <a href="#s6">6. Embedding models</a>
+  <a href="#s7">7. Choosing a vector store</a>
+  <a href="#s8">8. Index configuration</a>
+  <a href="#s9">9. Metadata and filtering</a>
+  <a href="#s10">10. Retrieval strategies</a>
+  <a href="#s11">11. Fusing result sets</a>
+  <a href="#s12">12. Reranking</a>
+  <a href="#s13">13. The generation prompt</a>
+  <a href="#s14">14. Citations and grounding</a>
+  <a href="#s15">15. Building an evaluation set</a>
+  <a href="#s16">16. Retrieval metrics</a>
+  <a href="#s17">17. End-to-end metrics</a>
+  <a href="#s18">18. Observability</a>
+  <a href="#s19">19. Failure modes</a>
+  <a href="#s20">20. Latency and cost</a>
+  <a href="#s21">21. Keeping the corpus current</a>
+  <a href="#s22">22. Security and multi-tenancy</a>
+  <a href="#s23">23. Reference implementation</a>
+  <a href="#s24">24. Troubleshooting</a>
+  <a href="#s25">25. Production checklist</a>
+  <a href="#s26">26. Multi-turn conversation</a>
+  <a href="#s27">27. Beyond single-shot retrieval</a>
+  <div class="grp">
+    <a class="app" href="#a1">Appendix A · Metrics reference</a>
+    <a class="app" href="#a2">Appendix B · Chunking decisions</a>
+    <a class="app" href="#a3">Appendix C · Failure quick reference</a>
+    <a class="app" href="#a4">Appendix D · Glossary</a>
+  </div>
+</nav>
+
+<article>
+<h2 id="s1"><span class="num">Section 1</span>Who this is for</h2>
+<p class="lede">This guide is for a team that has a working RAG prototype and has been asked to make it good enough to put in front of customers. That is a different problem from building the prototype, and most of the difficulty lives in places the prototype never exercised.</p>
+<p>It assumes you can write Python and have used an embedding model at least once. It does not assume any background in information retrieval. Where a retrieval concept matters, it is explained at the point it becomes relevant rather than in a theory section up front.</p>
+<h3>The gap this guide addresses</h3>
+<p>A RAG prototype is a weekend. Load some documents, chunk them, embed them, stuff the nearest matches into a prompt. It works, it demos well, and a stakeholder sees it and asks when it can ship.</p>
+<p>What happens next is predictable. Real users ask questions the demo corpus never anticipated. Answers come back fluent, cited and wrong. Someone adds a reranker, which helps a little. Someone rewrites the prompt several times, which helps less than expected. Three months later the team cannot say whether the system is better or worse than it was in week two, because nobody built a way to measure it.</p>
+<p>This guide is organised to prevent that sequence. The single most useful idea in it appears in Section 16: measure retrieval separately from generation, because they fail differently and the fixes are unrelated.</p>
+<h3>What you need</h3>
+<ul>
+  <li>A corpus you actually intend to serve, not a sample. The characteristics of your real documents drive most of the decisions here.</li>
+  <li>Somewhere to run Postgres or a dedicated vector store.</li>
+  <li>Access to an embedding model and a generation model.</li>
+  <li>Thirty to fifty real questions from real users, with known correct answers. Section 15 explains how to produce these if you do not have them. Nothing else in this guide is as valuable.</li>
+</ul>
+<h3>Conventions</h3>
+<table>
+  <tr><th>Term</th><th>Used here to mean</th></tr>
+  <tr><td>Document</td><td>A source item as it exists before processing. A PDF, a wiki page, a support ticket.</td></tr>
+  <tr><td>Chunk</td><td>A passage produced by splitting a document. The unit that is embedded and retrieved.</td></tr>
+  <tr><td>Corpus</td><td>The full set of documents you intend to answer from.</td></tr>
+  <tr><td>Retriever</td><td>The component that returns candidate chunks for a query.</td></tr>
+  <tr><td>Generator</td><td>The language model that writes the answer from retrieved chunks.</td></tr>
+  <tr><td>Recall</td><td>Unless qualified, the proportion of queries where the correct passage appears anywhere in the retrieved set.</td></tr>
+</table>
+
+<h2 id="s2"><span class="num">Section 2</span>Is RAG the right tool?</h2>
+<p class="lede">RAG is the default answer to "the model does not know about our documents", and it is often correct. It is not always correct, and the alternatives have become more viable than they were when the pattern was established.</p>
+<h3>What RAG is actually for</h3>
+<p>RAG solves one problem well: letting a model answer from a body of text that is too large, too private or too frequently updated to put in a prompt or into weights. Everything else it appears to solve is a side effect.</p>
+<h3>The three alternatives</h3>
+<table>
+  <tr><th>Approach</th><th>Right when</th><th>Wrong when</th></tr>
+  <tr><td><b>Long context</b>, put the documents in the prompt</td><td>The relevant corpus per query is small and bounded. A single contract, one policy document, one codebase module.</td><td>The corpus is large, because cost and latency scale with input length and attention quality degrades across very long inputs.</td></tr>
+  <tr><td><b>Fine-tuning</b></td><td>You need consistent format, voice or behaviour. Shorter prompts at volume. A narrow, stable task.</td><td>You need the model to know facts. Fine-tuning teaches style far more reliably than it teaches content, and fine-tuned facts cannot be updated without retraining.</td></tr>
+  <tr><td><b>Structured query</b>, SQL or an API call</td><td>The answer lives in structured data. "How many orders shipped late last month" is a database question wearing a natural-language costume.</td><td>The answer lives in prose.</td></tr>
+  <tr><td><b>RAG</b></td><td>A large or changing corpus of prose, where the relevant portion per query is small and must be selected.</td><td>Any of the above fits better.</td></tr>
+</table>
+<h3>The hybrid case</h3>
+<p>The most common correct architecture in practice is not pure RAG. It is a router that sends structured questions to a query engine, small-corpus questions to a long-context call, and genuinely open prose questions to retrieval. Teams that commit to RAG for everything end up embedding their orders table, which works badly and is avoidable.</p>
+<div class="tip"><b>A useful exercise before you build.</b> Take fifty real user questions and sort them by what would actually answer them. If more than a quarter are answerable from structured data, build the query path first. It is cheaper, it is exact, and it will handle a meaningful share of your traffic with no hallucination risk at all.</div>
+
+<h2 id="s3"><span class="num">Section 3</span>Architecture overview</h2>
+<p class="lede">A RAG system has two pipelines that run at different times and fail in different ways. Keeping them separate in your head, and in your code, prevents most of the confusion that follows.</p>
+<h3>The ingestion pipeline</h3>
+<p>Runs offline, when documents change. Source, parse, chunk, embed, index. Its failures are quiet: a parser that silently drops tables, a chunker that splits a fact in half, an embedding job that failed on 3% of documents and logged nothing. You will not notice any of these at ingestion time. You will notice them as unexplained retrieval gaps weeks later.</p>
+<h3>The query pipeline</h3>
+<p>Runs per request. Embed the query, retrieve candidates, rerank, assemble a prompt, generate, post-process. Its failures are loud but misattributed. The answer is wrong, so the prompt gets blamed, when the cause is usually three stages earlier.</p>
+<pre><code>INGESTION (offline)
+  sources ──▶ parse ──▶ chunk ──▶ embed ──▶ index
+                 │         │        │         │
+            drops tables   splits  silent   stale after
+            and headers    facts   failures  model change
+
+QUERY (per request)
+  question ──▶ embed ──▶ retrieve ──▶ rerank ──▶ prompt ──▶ generate
+                            │           │                      │
+                      misses exact   drops the            answers from
+                      identifiers    right chunk          wrong context</code></pre>
+<h3>Where quality actually comes from</h3>
+<p>A rough allocation of where effort pays off, based on what tends to move the numbers:</p>
+<table>
+  <tr><th>Stage</th><th>Typical share of quality problems</th><th>Effort usually spent</th></tr>
+  <tr><td>Parsing and chunking</td><td>High</td><td>Low</td></tr>
+  <tr><td>Metadata and filtering</td><td>High</td><td>Very low</td></tr>
+  <tr><td>Retrieval strategy</td><td>Moderate</td><td>Moderate</td></tr>
+  <tr><td>Reranking</td><td>Moderate</td><td>Moderate</td></tr>
+  <tr><td>Prompt engineering</td><td>Low</td><td>Very high</td></tr>
+  <tr><td>Model choice</td><td>Low</td><td>High</td></tr>
+</table>
+<p>The mismatch between the second and third columns is the central practical observation of this guide. Prompt and model are the most visible, most discussed and most readily adjusted parts of the system, which is why they absorb attention out of proportion to their effect.</p>
+<h3>The rule to internalise</h3>
+<blockquote><b>Generation quality problems are usually retrieval problems.</b> If the correct passage never reached the model, no prompt will recover it. Before changing a prompt, look at what was actually in the context window.</blockquote>
+
+<h2 id="s4"><span class="num">Section 4</span>Ingestion and parsing</h2>
+<p class="lede">Parsing is the least interesting part of the system and one of the two largest sources of quality loss. What your parser silently discards sets a ceiling on everything downstream.</p>
+<h3>The problem with PDFs</h3>
+<p>A PDF describes where glyphs appear on a page. It does not describe structure. There is no reliable notion of a paragraph, a heading, a table or a reading order. Every PDF parser is reconstructing that from geometry, and every one of them gets some documents wrong.</p>
+<p>Common losses, in rough order of impact:</p>
+<ul>
+  <li><b>Tables become word soup.</b> A table parsed naively yields cell contents in reading order with no row or column association. The numbers survive; the meaning does not.</li>
+  <li><b>Multi-column layouts interleave.</b> Two columns read as alternating fragments of two sentences.</li>
+  <li><b>Headers and footers repeat.</b> Every chunk gains the document title and a page number, which dilutes the embedding.</li>
+  <li><b>Scanned pages produce nothing.</b> No embedded text, no error, an empty document that indexes successfully.</li>
+  <li><b>Footnotes interrupt.</b> A footnote marker drops a block of unrelated text into the middle of a sentence.</li>
+</ul>
+<div class="warn"><b>Check your parser output before you build anything else.</b> Take twenty documents representative of your corpus, parse them, and read the output. Not spot-check: read it. Teams routinely discover at this point that a third of their corpus is scanned images, or that their most important documents are entirely tables. Both are solvable, and both are much cheaper to discover now than after you have tuned a retriever against a broken index.</div>
+<h3>Choosing a parsing approach</h3>
+<table>
+  <tr><th>Approach</th><th>Good for</th><th>Cost</th></tr>
+  <tr><td>Text extraction libraries</td><td>Clean, single-column, text-native documents</td><td>Negligible. Start here and measure.</td></tr>
+  <tr><td>Layout-aware parsers</td><td>Multi-column, mixed content, documents where structure matters</td><td>Slower, more dependencies, materially better output</td></tr>
+  <tr><td>OCR</td><td>Scanned documents. Unavoidable if you have them.</td><td>Slow, imperfect, needs a quality check step</td></tr>
+  <tr><td>Vision-model parsing</td><td>Complex layouts, tables, forms, diagrams with meaningful labels</td><td>Expensive per page. Justified for high-value, structurally difficult documents.</td></tr>
+</table>
+<p>A pragmatic pattern is tiered. Run the cheap parser, apply a quality heuristic, and escalate only the documents that fail it.</p>
+<pre><code>def parse(document):
+    text = fast_extract(document)
+    if quality_ok(text, document):
+        return text, "fast"
+    text = layout_aware_extract(document)
+    if quality_ok(text, document):
+        return text, "layout"
+    return vision_extract(document), "vision"
+
+def quality_ok(text, document):
+    if len(text.strip()) < 100 * document.page_count * 0.1:
+        return False                      # suspiciously little text
+    if non_word_ratio(text) > 0.3:
+        return False                      # likely OCR garbage or glyph soup
+    if looks_like_interleaved_columns(text):
+        return False
+    return True</code></pre>
+<p>The escalation ratio is itself a useful metric. If 60% of documents escalate to vision parsing, your cost model changes and you should know that before the invoice arrives.</p>
+<h3>Preserve structure as metadata</h3>
+<p>Whatever parser you use, capture structure alongside the text rather than discarding it. Section headings, page numbers, table boundaries and document hierarchy are all useful later, both for chunking and for citation.</p>
+<pre><code>{
+  "document_id": "policy-travel-2026",
+  "title": "Travel and Expenses Policy",
+  "section_path": ["Expenses", "Travel", "Contractors"],
+  "page": 14,
+  "element_type": "paragraph",
+  "text": "Contractors engaged for assignments exceeding six months ..."
+}</code></pre>
+<p>The <code>section_path</code> field alone measurably improves answers, because it lets you prepend context to a chunk that would otherwise be ambiguous out of its position in the document.</p>
+<h3>Handling tables</h3>
+<p>Tables deserve separate treatment because they fail worse than anything else. Three approaches, in increasing order of effort and effectiveness.</p>
+<ol>
+  <li><b>Keep the table whole.</b> Never split a table across chunks. A table of twelve rows becomes one chunk even if that chunk is larger than your target size.</li>
+  <li><b>Linearise with headers repeated.</b> Convert each row into a sentence carrying its column headers. "Region: EMEA. Q3 revenue: 4.2m. Growth: 11%." This triples the text and dramatically improves retrievability, because each row is now independently meaningful.</li>
+  <li><b>Store the table separately and summarise it.</b> Index a natural-language summary for retrieval, and attach the structured table for the generator to read. The summary gets found; the table provides the precision.</li>
+</ol>
+<p>Approach 2 is the best effort-to-benefit ratio for most corpora. It is also the one that most clearly demonstrates why generic chunking strategies underperform on real documents.</p>
+
+<h2 id="s5"><span class="num">Section 5</span>Chunking</h2>
+<p class="lede">Chunking determines what can be retrieved at all. A fact that is split across two chunks, or buried in a chunk about something else, is effectively absent from your corpus however good your retriever is.</p>
+<h3>Why chunk at all</h3>
+<p>Two reasons, and they pull in opposite directions. Embeddings of long text lose specificity, because a single vector has to represent everything in the passage. And context windows, while large, are not free, so you cannot pass whole documents for every query.</p>
+<p>The tension is this. Smaller chunks embed more precisely but carry less context, so a retrieved chunk may be insufficient to answer from. Larger chunks carry more context but embed less precisely, so they are harder to retrieve accurately. There is no universally correct size.</p>
+<h3>Strategies</h3>
+<table>
+  <tr><th>Strategy</th><th>How</th><th>Best for</th><th>Weakness</th></tr>
+  <tr><td>Fixed size</td><td>Split every N tokens with overlap</td><td>Homogeneous prose, a reasonable default</td><td>Cuts mid-sentence, mid-table, mid-list</td></tr>
+  <tr><td>Recursive character</td><td>Split on paragraph, then sentence, then word, until under the limit</td><td>General purpose. Better than fixed for nearly all text.</td><td>Still structure-blind on tables and code</td></tr>
+  <tr><td>Structural</td><td>Split on document structure: headings, sections, list items</td><td>Documentation, policies, anything with real hierarchy</td><td>Requires a parser that preserved structure</td></tr>
+  <tr><td>Semantic</td><td>Split where the topic shifts, detected by embedding similarity between adjacent sentences</td><td>Unstructured narrative text</td><td>Slow to compute, hard to tune, unpredictable sizes</td></tr>
+  <tr><td>Document-per-chunk</td><td>No splitting</td><td>Short items: FAQs, tickets, product entries</td><td>Does not scale to long documents</td></tr>
+</table>
+<h3>Size and overlap</h3>
+<p>A reasonable starting point for prose is 400 to 600 tokens with 10 to 20% overlap. Treat those as a baseline to measure against, not a recommendation to adopt permanently.</p>
+<p>Overlap exists so that a fact spanning a boundary survives intact in at least one chunk. It costs storage and introduces near-duplicate retrieval results, which is a real annoyance. Without it, boundary facts are simply lost.</p>
+<h3>The contextual prefix</h3>
+<p>One technique improves retrieval more reliably than tuning sizes, and it is cheap. Prepend each chunk with a short statement of where it came from.</p>
+<pre><code>def contextualise(chunk, document):
+    header = " > ".join([document.title] + chunk.section_path)
+    return f"[{header}]\n\n{chunk.text}"</code></pre>
+<p>A chunk reading "Contractors engaged for assignments exceeding six months are eligible" is ambiguous in isolation. Eligible for what? Prefixed with "Travel and Expenses Policy > Expenses > Travel > Contractors", it is both retrievable by a query about contractor travel and interpretable by the generator.</p>
+<p>This is a small change with an outsized effect, particularly on corpora where many documents discuss similar topics in different contexts.</p>
+<h3>Chunking by content type</h3>
+<p>One strategy for a whole corpus is a compromise that serves no part of it well. Route by type.</p>
+<pre><code>CHUNKERS = {
+    "prose":  RecursiveChunker(size=500, overlap=80),
+    "table":  WholeUnitChunker(linearise=True),
+    "code":   StructuralChunker(split_on=["function", "class"]),
+    "faq":    WholeUnitChunker(),
+    "ticket": WholeUnitChunker(include_resolution=True),
+}
+
+def chunk(element, document):
+    chunker = CHUNKERS.get(element.type, CHUNKERS["prose"])
+    return chunker.split(element, document)</code></pre>
+<h3>Measuring whether your chunking works</h3>
+<p>Chunking is usually tuned by intuition, which is why it is usually wrong. There is a direct measurement available.</p>
+<p>Take your evaluation questions, each with a known correct source passage. After chunking, check whether that passage survived intact in some chunk. The proportion that did is your chunking ceiling. No retriever can exceed it.</p>
+<pre><code>def chunking_ceiling(eval_set, chunks):
+    intact = 0
+    for item in eval_set:
+        needle = normalise(item.source_passage)
+        if any(needle in normalise(c.text) for c in chunks):
+            intact += 1
+    return intact / len(eval_set)</code></pre>
+<p>Teams running this for the first time commonly find a number between 0.7 and 0.85. That means 15 to 30% of their questions were unanswerable before retrieval was even attempted, and no amount of reranking or prompt work would have fixed any of them.</p>
+
+<h2 id="s6"><span class="num">Section 6</span>Embedding models</h2>
+<p class="lede">The embedding model turns text into the vectors you search. Changing it later means re-indexing everything, so this is one of the few decisions worth making deliberately at the start.</p>
+<h3>What matters when choosing</h3>
+<table>
+  <tr><th>Factor</th><th>Why it matters</th></tr>
+  <tr><td>Dimensions</td><td>Drives storage and index memory. It also interacts with index limits. pgvector's <code>vector</code> type caps HNSW and IVFFlat indexes at 2,000 dimensions, so a 3,072-dimension model needs the <code>halfvec</code> type to be indexable at all.</td></tr>
+  <tr><td>Max input length</td><td>Must exceed your chunk size with headroom. Truncation is usually silent.</td></tr>
+  <tr><td>Domain fit</td><td>General models underperform on code, legal text and heavily jargoned corpora. This is measurable on your own data and worth measuring.</td></tr>
+  <tr><td>Multilingual</td><td>If your corpus or your queries are not all in one language, this is a hard requirement rather than a preference.</td></tr>
+  <tr><td>Hosted or self-hosted</td><td>Hosted is simpler and introduces a per-token cost and a network dependency on your ingestion path. Self-hosted removes both and adds operational work.</td></tr>
+  <tr><td>Stability</td><td>A hosted model that is deprecated forces a full re-index on someone else's timetable. Check the provider's deprecation policy before committing.</td></tr>
+</table>
+<h3>The dimension question</h3>
+<p>Higher dimensions are not reliably better. They cost more storage, more index memory and more query time, and the retrieval gain is often small on domain-specific corpora. Several current models support reducing dimensions at the cost of some accuracy, which is worth testing rather than assuming.</p>
+<p>The practical consideration is the index limit. In pgvector, both HNSW and IVFFlat indexes on the <code>vector</code> type are capped at 2,000 dimensions. Models above that, including text-embedding-3-large at 3,072 dimensions and voyage-3-large at its 2,048 setting, hit this wall. The workaround is <code>halfvec</code>, which stores half-precision floats and supports higher dimensions in an index.</p>
+<pre><code>-- Fails for a 3072-dimension model
+CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
+-- ERROR: column cannot have more than 2000 dimensions for hnsw index
+
+-- Works
+ALTER TABLE chunks ADD COLUMN embedding_half halfvec(3072);
+UPDATE chunks SET embedding_half = embedding::halfvec;
+CREATE INDEX ON chunks USING hnsw (embedding_half halfvec_cosine_ops)
+  WITH (m = 16, ef_construction = 64);</code></pre>
+<p>Half precision loses a small amount of numerical fidelity. In practice the effect on retrieval quality is minor and the memory saving is substantial, which makes it a reasonable default rather than a grudging workaround.</p>
+<h3>Asymmetric embedding</h3>
+<p>Queries and documents are different kinds of text. A question is short and interrogative; a passage is long and declarative. Several embedding models accept an instruction or prefix distinguishing the two, and using it correctly improves retrieval measurably.</p>
+<pre><code>doc_vec   = embed(chunk_text, input_type="search_document")
+query_vec = embed(user_question, input_type="search_query")</code></pre>
+<p>Getting this backwards, or omitting it where the model expects it, is a quiet quality loss that no amount of downstream tuning recovers. Check your model's documentation for whether it distinguishes the two.</p>
+<h3>Re-indexing is the real cost</h3>
+<div class="warn"><b>Embeddings from different models are not comparable.</b> Mixing them in one index does not error. It returns nonsense, confidently, which makes this one of the harder failures to diagnose. Any change of embedding model, or of its dimension setting, requires re-embedding the entire corpus.</div>
+<p>Plan for this before you need it. A corpus of ten million chunks takes real time and money to re-embed, and doing it in place means a window where your index is inconsistent. The pattern that works is to build the new index alongside the old one, validate it against your evaluation set, then switch atomically.</p>
+<pre><code>chunks
+  id
+  text
+  embedding_v1    halfvec(1536)   -- current
+  embedding_v2    halfvec(1024)   -- being built
+  embedded_v2_at  timestamp</code></pre>
+<p>Record the model name and version on every chunk. When you later need to know which chunks were embedded with what, having that column is the difference between an afternoon and a week.</p>
+
+<h2 id="s7"><span class="num">Section 7</span>Choosing a vector store</h2>
+<p class="lede">The question is less "which is best" and more "do you need a separate system at all". For a large share of production workloads the answer is no.</p>
+<h3>Postgres with pgvector</h3>
+<p>If you already run Postgres, start here. pgvector gives you vector search inside the database you already operate, back up, monitor and know how to secure. It ships two approximate nearest neighbour index types, HNSW and IVFFlat, both trading exact accuracy for speed because brute-force search across millions of vectors is too slow for online queries.</p>
+<p>The advantages are mostly operational rather than technical, and they are substantial:</p>
+<ul>
+  <li><b>Transactional consistency.</b> Chunk text, metadata and vector are written in one transaction. No dual-write problem, no window where your index disagrees with your source of truth.</li>
+  <li><b>Real SQL filtering.</b> Metadata filters are ordinary WHERE clauses with ordinary indexes, joins and query planning.</li>
+  <li><b>One system to operate.</b> Your existing backup, failover, access control and monitoring already cover it.</li>
+  <li><b>Your team already knows it.</b> Debugging a retrieval problem with SQL you can read beats learning a new query language under pressure.</li>
+</ul>
+<p>The limits are real but arrive later than most teams expect. Guidance from managed Postgres providers converges on starting with pgvector HNSW for workloads under a few million rows, measuring, and moving to an extension such as pgvectorscale only once memory, ingest rate or index build time becomes a measured bottleneck.</p>
+<h3>Dedicated vector databases</h3>
+<p>Worth the extra system when you have a specific, measured reason:</p>
+<table>
+  <tr><th>Reason</th><th>Detail</th></tr>
+  <tr><td>Scale beyond comfortable Postgres territory</td><td>Hundreds of millions of vectors, where purpose-built sharding and compression matter.</td></tr>
+  <tr><td>Very high query throughput</td><td>Sustained thousands of queries per second with tight latency budgets.</td></tr>
+  <tr><td>Built-in hybrid search</td><td>Some stores ship dense and sparse retrieval with fusion as one query. Building that on Postgres is possible but is work.</td></tr>
+  <tr><td>Managed operations</td><td>A hosted store removes index tuning from your plate, at a price.</td></tr>
+</table>
+<h3>How to decide</h3>
+<p>Count your chunks and your expected query rate. Under a few million chunks and under a hundred queries per second, Postgres is very likely sufficient and the operational simplicity is worth real money. Above that, benchmark on your own data rather than on published figures.</p>
+<div class="tip"><b>Benchmarks on 10,000 vectors tell you nothing useful.</b> A benchmark at small scale looks clean, with fast queries and fast index builds, and none of the problems that matter at production scale are present. Build an HNSW index across millions of high-dimensional vectors and you discover that index construction needs substantially more RAM than querying does, and that the memory has to come from somewhere. Benchmark at your real corpus size or do not benchmark.</div>
+
+<h2 id="s8"><span class="num">Section 8</span>Index configuration</h2>
+<p class="lede">Index choice and tuning is where a correct retrieval design becomes a fast one. Using pgvector as the worked example, because its parameters are well documented and the concepts carry over.</p>
+<h3>HNSW or IVFFlat</h3>
+<table>
+  <tr><th></th><th>HNSW</th><th>IVFFlat</th></tr>
+  <tr><td>Structure</td><td>Navigable graph</td><td>List-based partitioning using k-means centroids</td></tr>
+  <tr><td>Recall</td><td>High, with minimal tuning</td><td>Lower, more sensitive to tuning</td></tr>
+  <tr><td>Build speed</td><td>Slow</td><td>Fast</td></tr>
+  <tr><td>Memory</td><td>Roughly 2 to 5 times IVFFlat</td><td>Lower</td></tr>
+  <tr><td>Works on an empty table</td><td>Yes. The graph builds incrementally as rows arrive.</td><td>No. The index must be built after the data is loaded.</td></tr>
+  <tr><td>Incremental inserts</td><td>Handled well</td><td>Degrades as the data drifts from the original centroids</td></tr>
+</table>
+<p>HNSW is the safer default and the one to start with. Choose IVFFlat only when build time or memory is a measured constraint and you can accept lower recall.</p>
+<div class="warn"><b>The IVFFlat trap.</b> An IVFFlat index built on an empty or near-empty table produces centroids from almost no data. The index is created successfully, queries run, and recall is terrible in a way that looks like a retrieval design problem rather than an index problem. Creating IVFFlat indexes in schema migrations is the usual cause, because migrations run before data loads. If you use IVFFlat, build the index after loading, and rebuild it when the data distribution changes substantially.</div>
+<h3>HNSW parameters</h3>
+<pre><code>CREATE INDEX idx_chunks_hnsw
+  ON chunks USING hnsw (embedding_half halfvec_cosine_ops)
+  WITH (m = 16, ef_construction = 200);</code></pre>
+<table>
+  <tr><th>Parameter</th><th>When</th><th>Effect</th></tr>
+  <tr><td><code>m</code></td><td>Build</td><td>Connections per node. Higher means better recall and more memory. 16 is a sound default. Raising to 32 can help on very high-dimensional embeddings; beyond that the return is usually poor.</td></tr>
+  <tr><td><code>ef_construction</code></td><td>Build</td><td>Effort spent building the graph. Higher is slower to build and produces a better graph. This is a one-off cost, so 200 to 400 is usually worth paying.</td></tr>
+  <tr><td><code>ef_search</code></td><td>Query</td><td>The recall-versus-speed dial, adjustable at query time without rebuilding. This is the one you tune after deployment.</td></tr>
+</table>
+<pre><code>SET hnsw.ef_search = 100;   -- per session, or set per query
+SELECT id, text, embedding_half <=> $1 AS distance
+FROM chunks
+ORDER BY embedding_half <=> $1
+LIMIT 50;</code></pre>
+<p>Tune <code>ef_search</code> empirically. Raise it until measured recall stops improving, then stop. Raising it further costs latency for nothing.</p>
+<h3>Distance operators</h3>
+<p>Match the operator to how your embedding model was trained. Most modern text embedding models are trained for cosine similarity, and using the wrong operator degrades results in a way that is easy to miss because it still returns plausible-looking neighbours.</p>
+<table>
+  <tr><th>Operator</th><th>Metric</th><th>Index opclass</th></tr>
+  <tr><td><code>&lt;=&gt;</code></td><td>Cosine distance</td><td><code>halfvec_cosine_ops</code></td></tr>
+  <tr><td><code>&lt;-&gt;</code></td><td>L2 distance</td><td><code>halfvec_l2_ops</code></td></tr>
+  <tr><td><code>&lt;#&gt;</code></td><td>Negative inner product</td><td><code>halfvec_ip_ops</code></td></tr>
+</table>
+<p>The index must be created with the opclass matching the operator you query with. An index built for L2 is simply not used by a cosine query, and the query silently falls back to a sequential scan. The symptom is a query that works correctly but takes seconds. Check with <code>EXPLAIN</code> whether your index is actually being used.</p>
+<h3>Memory</h3>
+<p>HNSW index construction is memory-hungry, substantially more so than querying the finished index. On a large corpus this is the constraint that bites first. Build with <code>maintenance_work_mem</code> raised for the session, and expect the build to be slow regardless.</p>
+<pre><code>SET maintenance_work_mem = '8GB';
+CREATE INDEX CONCURRENTLY idx_chunks_hnsw
+  ON chunks USING hnsw (embedding_half halfvec_cosine_ops)
+  WITH (m = 16, ef_construction = 200);</code></pre>
+<p><code>CONCURRENTLY</code> avoids locking writes during the build, which matters on a live system and makes an already slow build slower still. Plan the window.</p>
+<h3>When to look beyond pgvector</h3>
+<p>The ecosystem has grown beyond the two built-in index types, with DiskANN implementations available through extensions aimed at larger corpora. The sensible trigger for investigating them is a measured limit rather than anticipation: the index no longer fits comfortably in memory, builds take too long to fit in a maintenance window, or ingest volume makes index maintenance too expensive.</p>
+
+<h2 id="s9"><span class="num">Section 9</span>Metadata and filtering</h2>
+<p class="lede">Metadata is the highest-value, lowest-effort improvement available in most RAG systems, and the one most often skipped because it is unglamorous.</p>
+<h3>What to store</h3>
+<table>
+  <tr><th>Field</th><th>Used for</th></tr>
+  <tr><td><code>document_id</code>, <code>chunk_index</code></td><td>Citation, deduplication, fetching neighbouring chunks</td></tr>
+  <tr><td><code>title</code>, <code>section_path</code></td><td>Contextual prefixes, citation display</td></tr>
+  <tr><td><code>effective_from</code>, <code>effective_to</code></td><td>Time filtering. The single most valuable pair for policy or documentation corpora.</td></tr>
+  <tr><td><code>status</code></td><td>Current, superseded, draft, archived. See below.</td></tr>
+  <tr><td><code>supersedes</code>, <code>superseded_by</code></td><td>Explicit version relationships</td></tr>
+  <tr><td><code>access_level</code>, <code>tenant_id</code></td><td>Security filtering. Not optional in a multi-tenant system.</td></tr>
+  <tr><td><code>source_type</code></td><td>Routing and analysis. Policy, ticket, wiki, code.</td></tr>
+  <tr><td><code>language</code></td><td>Filtering in multilingual corpora</td></tr>
+  <tr><td><code>embedding_model</code></td><td>Knowing what to re-embed</td></tr>
+</table>
+<h3>The supersession problem</h3>
+<p>This is the failure that most damages trust in a RAG system, and it is invisible to every standard retrieval metric.</p>
+<p>Your corpus contains a 2023 policy stating that contractors are not eligible for the travel allowance. It also contains a 2026 revision stating that contractors on assignments over six months are eligible. Both documents are indexed. Both are genuinely relevant to the question "can contractors claim travel".</p>
+<p>Retrieval returns both. The reranker orders them by relevance to the query, not by recency, and the older document often wins because its statement is more direct and matches the question more tightly. The generator answers from it. The answer is grounded, cited and wrong.</p>
+<p>Nothing in precision, recall or nDCG detects this. Both retrieved chunks are relevant by any standard definition. The system scores well and gives the wrong answer.</p>
+<h3>The fix</h3>
+<p>Filter superseded content out before ranking rather than hoping ranking resolves it.</p>
+<pre><code>SELECT id, text, section_path,
+       embedding_half <=> $1 AS distance
+FROM chunks
+WHERE tenant_id = $2
+  AND status = 'current'
+  AND (effective_from IS NULL OR effective_from <= now())
+  AND (effective_to   IS NULL OR effective_to   >= now())
+ORDER BY embedding_half <=> $1
+LIMIT 50;</code></pre>
+<p>This requires that your ingestion pipeline knows about supersession, which is an organisational problem as much as a technical one. Somebody has to mark the 2023 policy as superseded. If your document management does not track that, the RAG system cannot invent it, and that limitation should be raised early rather than discovered through a wrong answer to an executive.</p>
+<div class="tip"><b>Where supersession cannot be determined,</b> fall back to exposing dates to the generator and instructing it to prefer recent sources and to flag conflicts. This is weaker than filtering and better than nothing. Include <code>effective_from</code> in the context for each chunk and tell the model what to do when two sources disagree.</div>
+<h3>Pre-filter or post-filter</h3>
+<p>Metadata filters can be applied before the vector search or after it, and the choice affects both correctness and speed.</p>
+<table>
+  <tr><th></th><th>Pre-filter</th><th>Post-filter</th></tr>
+  <tr><td>How</td><td>Restrict the candidate set, then search within it</td><td>Search the full index, then discard non-matching results</td></tr>
+  <tr><td>Correctness</td><td>Exact. You always get <code>top_k</code> matching results if they exist.</td><td>May return fewer than <code>top_k</code>, sometimes zero, if the filter removes most of the top results.</td></tr>
+  <tr><td>Speed</td><td>Can be slow on low-selectivity filters, because the index is less able to help</td><td>Fast, because the index does unfiltered work</td></tr>
+</table>
+<blockquote><b>Rule of thumb.</b> If the filter removes more than about 90% of the corpus, pre-filter. Otherwise post-filter and over-retrieve by a factor of three to compensate for the discards.</blockquote>
+<p>Security filters are the exception and must always be enforced in a way that cannot return another tenant's data, regardless of performance. Section 22 covers this.</p>
+
+<h2 id="s10"><span class="num">Section 10</span>Retrieval strategies</h2>
+<p class="lede">Pure vector search is the default in most tutorials and the wrong default in most real systems. Understanding why takes five minutes and saves a great deal of unproductive tuning.</p>
+<h3>Dense retrieval</h3>
+<p>Embed the query, find the nearest chunk vectors. This is what most people mean by RAG retrieval. It is good at matching meaning across different wording, which is genuinely valuable: a query about "time off" finds a passage about "annual leave".</p>
+<p>It is weak at exact matching. Product codes, internal acronyms, error codes, surnames and version numbers are poorly represented in embedding space, because the model was trained to capture semantics and these tokens have little. A query for "error PK-4471" will return chunks about errors generally, and quite possibly not the one chunk that names PK-4471.</p>
+<h3>Sparse retrieval</h3>
+<p>Keyword matching, typically BM25. Scores documents on term frequency weighted by how rare each term is across the corpus. It is exact where dense search is fuzzy, which makes it strong on precisely the queries dense search handles badly.</p>
+<p>Its weakness is the mirror image. It cannot match "time off" to "annual leave", because the words do not overlap.</p>
+<h3>Hybrid</h3>
+<p>Run both and combine the results. The two methods fail on different queries, so the union covers substantially more than either alone. This is the reliable way to raise the recall ceiling, and for most corpora it is worth the extra index.</p>
+<table>
+  <tr><th>Query type</th><th>Dense</th><th>Sparse</th><th>Hybrid</th></tr>
+  <tr><td>"How do I request leave?"</td><td>Strong</td><td>Moderate</td><td>Strong</td></tr>
+  <tr><td>"What does error PK-4471 mean?"</td><td>Weak</td><td>Strong</td><td>Strong</td></tr>
+  <tr><td>"Policy on contractors travelling"</td><td>Strong</td><td>Moderate</td><td>Strong</td></tr>
+  <tr><td>"Section 4.2.1 of the handbook"</td><td>Weak</td><td>Strong</td><td>Strong</td></tr>
+  <tr><td>"Why is my deployment slow?"</td><td>Strong</td><td>Weak</td><td>Strong</td></tr>
+</table>
+<h3>Is hybrid worth it for you?</h3>
+<p>There is a cheap test. Take fifty real queries and count how many contain a token that must match exactly: an identifier, a code, a proper noun, a version. If more than roughly a quarter do, hybrid will pay for itself. Under about ten percent, dense alone is probably fine and you have saved yourself an index to maintain.</p>
+<h3>Implementing hybrid on Postgres</h3>
+<p>Postgres has full-text search built in, so hybrid does not require a second system.</p>
+<pre><code>-- Add a tsvector column and index it
+ALTER TABLE chunks ADD COLUMN tsv tsvector
+  GENERATED ALWAYS AS (to_tsvector('english', text)) STORED;
+CREATE INDEX idx_chunks_tsv ON chunks USING GIN (tsv);</code></pre>
+<pre><code>-- Two ranked lists, fused in SQL
+WITH dense AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY embedding_half <=> $1) AS rank
+  FROM chunks
+  WHERE tenant_id = $3 AND status = 'current'
+  ORDER BY embedding_half <=> $1
+  LIMIT 50
+),
+sparse AS (
+  SELECT id, ROW_NUMBER() OVER (
+           ORDER BY ts_rank_cd(tsv, plainto_tsquery('english', $2)) DESC
+         ) AS rank
+  FROM chunks
+  WHERE tenant_id = $3 AND status = 'current'
+    AND tsv @@ plainto_tsquery('english', $2)
+  LIMIT 50
+)
+SELECT COALESCE(d.id, s.id) AS id,
+       COALESCE(1.0 / (60 + d.rank), 0) +
+       COALESCE(1.0 / (60 + s.rank), 0) AS rrf_score
+FROM dense d
+FULL OUTER JOIN sparse s ON d.id = s.id
+ORDER BY rrf_score DESC
+LIMIT 50;</code></pre>
+<p>That fusion step is reciprocal rank fusion, which Section 11 explains.</p>
+<h3>Query transformation</h3>
+<p>Two techniques are worth knowing, and both cost an extra model call.</p>
+<p><b>Query expansion.</b> Generate two or three alternative phrasings of the question, retrieve for each, and merge. Helps when users phrase things unlike your corpus. Costs latency and can introduce drift if the rewrites wander.</p>
+<p><b>Hypothetical document embedding.</b> Ask the model to write a short passage that would answer the question, then embed that instead of the question. The generated answer is closer in form to your documents than the question was, which can improve matching on corpora where questions and content are stylistically very different.</p>
+<p>Both help on some corpora and not others. Measure before adopting either, because both add a model call to the critical path.</p>
+<h3>How many to retrieve</h3>
+<p>Retrieve broadly and discard aggressively. Pulling 50 candidates and reranking to 5 produces better results than retrieving 5 directly, because the reranker can only choose from what it was given. Section 12 explains why the second stage is so much better at choosing.</p>
+
+<h2 id="s11"><span class="num">Section 11</span>Fusing result sets</h2>
+<p class="lede">Once you have two ranked lists from different retrievers, you need one. The naive approaches fail for an instructive reason.</p>
+<h3>Why you cannot just add the scores</h3>
+<p>A cosine distance and a BM25 score are not on the same scale and are not even the same kind of quantity. One is bounded, the other is not. One is a distance where lower is better, the other a relevance score where higher is better. Their distributions differ per query. Normalising them per query is possible but fragile, because the normalisation depends on the score spread in that particular result set.</p>
+<h3>Reciprocal rank fusion</h3>
+<p>RRF sidesteps the problem by discarding the scores and using only the ranks. For each document, sum a decreasing function of its rank in each list.</p>
+<pre><code>score(d) = Σ  1 / (k + rank_i(d))
+           i</code></pre>
+<p>Where <code>rank_i(d)</code> is the position of document <code>d</code> in list <code>i</code>, and <code>k</code> is a constant conventionally set to 60. A document ranked first in one list and absent from the other scores 1/61. A document ranked third in both scores 2/63, which is higher. Appearing in both lists is rewarded, which is exactly the behaviour you want.</p>
+<p>It requires no calibration between the two systems, which is why it has become the dominant fusion method for hybrid search. It originates in work by Cormack and colleagues in 2009 and has survived because it is simple and hard to misconfigure.</p>
+<pre><code>def rrf(ranked_lists, k=60, weights=None):
+    weights = weights or [1.0] * len(ranked_lists)
+    scores = {}
+    for lst, w in zip(ranked_lists, weights):
+        for rank, doc_id in enumerate(lst, start=1):
+            scores[doc_id] = scores.get(doc_id, 0.0) + w / (k + rank)
+    return sorted(scores, key=scores.get, reverse=True)</code></pre>
+<h3>Tuning k and the weights</h3>
+<p>The constant <code>k</code> controls how sharply rank matters. Lower values weight the top positions more heavily; higher values flatten the curve. The conventional 60 is a reasonable default and rarely the thing limiting your quality.</p>
+<p>Weights are more useful. If your evaluation shows dense retrieval outperforming sparse on your corpus, weight it higher. Keep the weights as configuration rather than constants, so they can be tuned against the evaluation set rather than by argument.</p>
+<h3>When fusion is not the answer</h3>
+<p>If one retriever is dramatically better than the other on your corpus, fusion can drag results down by promoting the weaker list's choices. Measure both individually before fusing. A sparse retriever that performs poorly because your corpus has no exact-match vocabulary is noise, not signal, and fusing it in makes things worse.</p>
+
+<h2 id="s12"><span class="num">Section 12</span>Reranking</h2>
+<p class="lede">Retrieval finds documents that look like the query. Reranking finds the ones that answer it. The distinction sounds subtle and accounts for a large share of the quality difference between a prototype and a production system.</p>
+<h3>Bi-encoders and cross-encoders</h3>
+<p>Your retriever uses a bi-encoder. The query and each document are embedded independently and compared by vector distance. This is fast and scales, because document vectors are computed once at ingestion and reused for every query.</p>
+<p>A cross-encoder processes the query and a document together in a single forward pass, so the model can attend across both. This produces a much better relevance judgement and cannot be precomputed, because the pairing is query-specific.</p>
+<p>The cost difference is stark. A bi-encoder can embed ten thousand sentences in a few seconds. A cross-encoder scoring the same ten thousand sentences pairwise, roughly fifty million pairs, would take on the order of sixty-five hours. That asymmetry is why the architecture is two-stage: retrieve broadly with the cheap model, rerank a small pool with the expensive one.</p>
+<h3>The cascade</h3>
+<pre><code>Query
+  │
+  ├── dense retrieval    top 50 ─┐
+  │                              ├── RRF ──▶ 50 candidates
+  └── sparse retrieval   top 50 ─┘                │
+                                                  ▼
+                                          cross-encoder rerank
+                                                  │
+                                                  ▼
+                                            top 5 to the prompt</code></pre>
+<p>Retrieving 50 to 100 candidates and reranking down to 3 to 5 is the common shape. The first stage optimises recall, the second optimises precision at the top, and the generator only ever sees a small, well-chosen set.</p>
+<h3>Choosing a reranker</h3>
+<table>
+  <tr><th>Option</th><th>Character</th><th>Consider when</th></tr>
+  <tr><td>Hosted rerank APIs (Cohere, Voyage)</td><td>One call, no infrastructure, strong multilingual performance. Cohere Rerank sits around a dollar per thousand searches.</td><td>You want the lowest-friction path and can accept a per-query cost and an external dependency.</td></tr>
+  <tr><td>BGE reranker family</td><td>Open source, strong accuracy, runs on moderate hardware. The v2 and v2.5 models supersede the earlier base and large versions.</td><td>You prefer open weights and can host a model.</td></tr>
+  <tr><td>mxbai-rerank-v2</td><td>Apache 2.0, long context around eight thousand tokens, fast inference, multilingual.</td><td>Licence matters, or your chunks are long.</td></tr>
+  <tr><td>ms-marco MiniLM cross-encoders</td><td>Small and quick. The L6 variant measured 74.30 nDCG@10 on TREC DL19 and processes on the order of 1,800 documents per second.</td><td>Latency budget is tight and you can accept some accuracy loss.</td></tr>
+  <tr><td>LLM-as-reranker</td><td>Prompt a general model to score or order passages. Flexible, no training, slow and expensive.</td><td>Prototyping, or where relevance depends on reasoning a cross-encoder cannot do.</td></tr>
+</table>
+<h3>What reranking costs and returns</h3>
+<p>Published figures from vendors put the improvement around 15 to 30% on precision and recall, with 100 to 500 milliseconds of added latency. Treat those as an order of magnitude rather than a promise. The honest position, and one the vendors themselves state, is that reranking does not always earn its keep and a meaningful share of queries see no benefit at all.</p>
+<div class="tip"><b>Measure it on your own data before committing.</b> Run your evaluation set with and without the reranker and compare. If the lift is two points and the latency cost is 400 milliseconds, that is a product decision rather than an obvious win. If the lift is fifteen points, it is not a decision at all.</div>
+<h3>Degrading gracefully</h3>
+<p>A hosted reranker is a network dependency on your critical path. If it is slow or down, the correct behaviour is to serve unreranked results, not to fail the query. Slightly worse answers beat no answers.</p>
+<pre><code>async def rerank(query, candidates, timeout_s=0.8):
+    try:
+        return await asyncio.wait_for(
+            reranker.score(query, candidates), timeout=timeout_s
+        )
+    except (asyncio.TimeoutError, RerankerUnavailable):
+        metrics.increment("rerank.degraded")
+        return candidates[:TOP_N]      # fall back to fusion order</code></pre>
+<p>Count the degradations. A rising <code>rerank.degraded</code> rate is an early signal of a quality drop that no other metric will show you, because the answers still get generated and still look fine.</p>
+
+<h2 id="s13"><span class="num">Section 13</span>The generation prompt</h2>
+<p class="lede">By this point the hard work is done. The prompt's job is narrow: use the context, say when it is insufficient, and cite. Prompts that attempt more than that tend to achieve less.</p>
+<h3>A working structure</h3>
+<pre><code>You answer questions using only the sources provided below.
+
+Rules:
+- Answer only from the sources. Do not use other knowledge.
+- If the sources do not contain the answer, say so plainly and stop.
+- If the sources disagree with each other, say so and quote both.
+- Cite the source number for every factual claim, like this: [2]
+- Prefer more recent sources where dates are given.
+- Be concise. Do not restate the question.
+
+SOURCES
+[1] (Travel Policy > Contractors, effective 2026-04-01)
+Contractors engaged for assignments exceeding six months are
+eligible for the standard travel allowance...
+
+[2] (Travel Policy > Contractors, effective 2023-01-01, SUPERSEDED)
+Contractors are not eligible for the travel allowance...
+
+QUESTION
+Can contractors claim travel expenses?</code></pre>
+<h3>The instructions that matter</h3>
+<p><b>Permission to say no.</b> Most prompts instruct the model to answer from context. Fewer explicitly permit it to report that the context is insufficient. Without that permission, a model handed irrelevant context will often produce an answer anyway, because answering is what it was asked to do. This single instruction converts a class of silent wrong answers into visible gaps you can fix.</p>
+<p><b>Permission to report conflict.</b> Same reasoning. A model told to answer from context, given two contradictory passages, picks one. Told it may report disagreement, it reports it. A flagged conflict is a corpus bug with a location attached, which is considerably more useful than a wrong answer.</p>
+<p><b>Dates in the source headers.</b> Cheap, and it gives the model something to reason with when supersession metadata was unavailable.</p>
+<h3>What does not help</h3>
+<ul>
+  <li><b>Emphasis.</b> Capitals and exclamation marks do not outrank a clear instruction.</li>
+  <li><b>Threats and inducements.</b> Claiming that a job depends on the answer, or offering a tip, is folklore that does not survive testing.</li>
+  <li><b>Persona stacking.</b> "You are a world-class expert" adds tokens, not accuracy. Describe the task precisely instead.</li>
+  <li><b>Long rule lists.</b> Past roughly eight instructions, adherence degrades. If you have twenty rules, most of them are not being followed and you cannot tell which.</li>
+</ul>
+<h3>Ordering within the context</h3>
+<p>Models attend most reliably to the beginning and end of their input. Where you have a confident ranking, placing the strongest source first and the question last is a reasonable default. Some teams place the best source last instead, on the same reasoning. Test it on your own evaluation set rather than adopting either as doctrine; the effect size is usually small and model-dependent.</p>
+<h3>Changing the prompt safely</h3>
+<div class="warn"><b>Change one thing at a time and record it.</b> Prompt changes interact in ways that are not obvious. A team that edits three instructions and ships the result cannot explain its own quality regression a month later, and cannot revert cleanly because it no longer knows which change mattered. Version your prompts, run the evaluation set against each version, and keep the scores.</div>
+
+<h2 id="s14"><span class="num">Section 14</span>Citations and grounding</h2>
+<p class="lede">Citations are the feature users notice most and trust least once they have caught one being wrong. Getting them right is partly a prompting problem and mostly an engineering one.</p>
+<h3>Resolve citations, do not trust them</h3>
+<p>A model asked to cite source numbers will sometimes cite a source that does not support the claim, or cite source 4 when you supplied three. Treat model-produced citation markers as claims to verify rather than as output to render.</p>
+<pre><code>CITATION = re.compile(r"\[(\d+)\]")
+
+def resolve_citations(answer, sources):
+    cited, invalid = set(), set()
+    for m in CITATION.finditer(answer):
+        n = int(m.group(1))
+        if 1 <= n <= len(sources):
+            cited.add(n)
+        else:
+            invalid.add(n)
+
+    if invalid:
+        metrics.increment("citation.out_of_range", len(invalid))
+        answer = CITATION.sub(
+            lambda m: "" if int(m.group(1)) in invalid else m.group(0), answer
+        )
+
+    return answer, [sources[n - 1] for n in sorted(cited)]</code></pre>
+<p>Log the out-of-range rate. A rising figure usually means your context is too long or your source numbering is inconsistent between turns.</p>
+<h3>Checking that a citation supports its claim</h3>
+<p>Stronger verification is possible and costs a second model call. Extract the claims from the answer and check each against the cited source. This is essentially the faithfulness measure described in Section 17, run inline rather than in evaluation.</p>
+<p>Most systems cannot afford this per request. A reasonable compromise is to run it on a sample, and on every answer flagged by a user, which gives you a measured faithfulness rate without paying for it on every query.</p>
+<h3>Presenting sources</h3>
+<ul>
+  <li><b>Link to the specific location,</b> not the document. A citation that opens a 200-page PDF at page one is not a citation.</li>
+  <li><b>Show the passage,</b> or enough of it to judge. Users check citations by reading them, and a title alone does not let them.</li>
+  <li><b>Show the date</b> where your corpus has versions. Users are better than your pipeline at noticing that an answer came from an old policy.</li>
+  <li><b>Say when nothing was found.</b> An answer with no citations should look visibly different from one with them, so users know which they are reading.</li>
+</ul>
+<h3>Grounding is not accuracy</h3>
+<p>An answer can be perfectly grounded in its sources and still wrong, because the sources were wrong or because the retrieved sources were not the right ones. Faithfulness and correctness are different properties, and a system can score well on the first while failing the second. Section 17 keeps them separate for exactly this reason.</p>
+
+<h2 id="s15"><span class="num">Section 15</span>Building an evaluation set</h2>
+<p class="lede">This is the most valuable thing in this guide and the most frequently skipped. Without an evaluation set you cannot tell improvement from coincidence, and every change becomes an argument rather than a measurement.</p>
+<h3>What you need</h3>
+<p>Thirty to fifty question-and-answer pairs is enough to start. Each needs three things.</p>
+<table>
+  <tr><th>Field</th><th>Why</th></tr>
+  <tr><td>The question, in a real user's words</td><td>Not your words. Users phrase things differently from the people who wrote the corpus, and that gap is a large part of what you are measuring.</td></tr>
+  <tr><td>The correct answer</td><td>For end-to-end scoring.</td></tr>
+  <tr><td>The source passage that supports it</td><td>For retrieval scoring. This is the field that makes the set useful rather than decorative.</td></tr>
+</table>
+<p>That third field is what lets you measure retrieval separately. Without it you can only judge the final answer, which tells you something is wrong but never where.</p>
+<h3>Where the questions come from</h3>
+<ol>
+  <li><b>Real user queries,</b> if you have any. Search logs, support tickets, the questions people ask colleagues on Slack. Always the best source.</li>
+  <li><b>Subject matter experts.</b> Ask the three people who currently answer these questions for the ten they are asked most. They will also tell you which are commonly got wrong, which is useful.</li>
+  <li><b>Generated from the corpus.</b> Prompt a model to produce questions from each document. Fast, and weaker, because generated questions tend to use the document's own vocabulary and therefore flatter your retriever. Use as a supplement, not a foundation.</li>
+</ol>
+<h3>Composition matters</h3>
+<p>A set of fifty easy questions tells you nothing. Deliberately include:</p>
+<ul>
+  <li><b>Questions with no answer in the corpus.</b> Perhaps a fifth. The correct behaviour is to say so, and a system that invents answers for these is worse than one that misses a few real ones.</li>
+  <li><b>Questions answerable only by combining two documents.</b> These expose the limits of single-passage retrieval.</li>
+  <li><b>Questions where the corpus contradicts itself.</b> Supersession cases. The correct behaviour is to answer from the current source or to flag the conflict.</li>
+  <li><b>Questions using exact identifiers.</b> Error codes, product names, section numbers. These are where dense-only retrieval fails.</li>
+  <li><b>Questions phrased unlike the corpus.</b> Colloquial, abbreviated, misspelled. Real.</li>
+</ul>
+<h3>Maintaining it</h3>
+<p>Add to the set every time you find a failure in production. A question that went wrong, with its correct answer and source, is the highest-value addition available, and it prevents the regression from recurring silently.</p>
+<p>Keep the set in version control alongside the code. It is as much an artefact of the system as the prompts are, and it should be reviewed when it changes.</p>
+<div class="tip"><b>Budget half a day.</b> Fifty questions with sources takes a focused afternoon with a subject matter expert in the room. Teams defer this for months because it feels like overhead, then spend far longer than half a day arguing about whether a change helped.</div>
+
+<h2 id="s16"><span class="num">Section 16</span>Retrieval metrics</h2>
+<p class="lede">Measure retrieval on its own, before anything touches the generator. This is the single highest-leverage diagnostic available, because it tells you the ceiling on everything downstream.</p>
+<h3>The number that matters most</h3>
+<p><b>Retrieval recall:</b> for what proportion of your evaluation questions does the correct source passage appear anywhere in the retrieved set?</p>
+<pre><code>def retrieval_recall(eval_set, retriever, k=50):
+    hits = 0
+    for item in eval_set:
+        results = retriever.search(item.question, k=k)
+        if any(item.source_chunk_id == r.chunk_id for r in results):
+            hits += 1
+    return hits / len(eval_set)</code></pre>
+<p>If this is 0.70, then 30% of your questions are unanswerable no matter what the generator does. Your answer accuracy cannot exceed 0.70, and every hour spent on the prompt is an hour spent on the wrong layer.</p>
+<p>Most teams have never measured it. It is usually lower than they expect, and it is almost always the cheapest thing to improve.</p>
+<h3>Rank-aware metrics</h3>
+<p>Recall tells you whether the right passage was found. It does not tell you whether it was found in position 2 or position 48, which matters because only the top few survive to the prompt.</p>
+<table>
+  <tr><th>Metric</th><th>What it adds</th></tr>
+  <tr><td>Precision@k</td><td>What fraction of the top k are relevant. Useful when several passages could answer.</td></tr>
+  <tr><td>MRR</td><td>Mean reciprocal rank. The average of 1/position of the first relevant result. Sensitive to whether the best answer is first.</td></tr>
+  <tr><td>nDCG@k</td><td>Discounts relevance by position. The standard where relevance is graded rather than binary.</td></tr>
+  <tr><td>Recall@k at two values of k</td><td>Recall@50 versus recall@5 separates "retrieval found it" from "ranking surfaced it". A large gap means your reranker is the problem, not your retriever.</td></tr>
+</table>
+<p>That last row is the most practically useful comparison in this table. Measure both and the gap tells you which stage to work on.</p>
+<h3>The caveat on classic IR metrics</h3>
+<p>Precision, recall and nDCG evaluate relevance to the query. A RAG generator needs passages that are <em>useful for answering</em>, which is related but not identical. A passage can be topically relevant and useless, or marginally relevant and decisive. This is a known limitation of borrowing metrics from classical retrieval, and it is why the retrieval numbers are a diagnostic rather than a verdict.</p>
+<h3>Context precision and context recall</h3>
+<p>The Ragas framework defines two metrics specifically for the retrieval side of RAG, and they are worth adopting because they are closer to what the generator actually needs.</p>
+<ul>
+  <li><b>Context recall</b> measures the proportion of claims in the ground-truth answer that can be attributed to the retrieved context. This asks whether the context was <em>sufficient</em>, which plain recall does not.</li>
+  <li><b>Context precision</b> measures whether the relevant items are ranked near the top rather than buried among noise.</li>
+</ul>
+<p>Both are computed with a judge model rather than by exact matching, which makes them applicable without hand-labelling every passage, at the cost of some noise.</p>
+
+<h2 id="s17"><span class="num">Section 17</span>End-to-end metrics</h2>
+<p class="lede">Retrieval metrics tell you where a problem is. End-to-end metrics tell you whether the system is any good. You need both, and the common mistake is to track only the second.</p>
+<h3>The four-metric frame</h3>
+<p>The Ragas metrics divide cleanly along two axes, which is why they have become a common vocabulary.</p>
+<table>
+  <tr><th>Metric</th><th>Asks</th><th>Diagnoses</th></tr>
+  <tr><td>Context precision</td><td>Is the relevant context ranked highly?</td><td>The retriever</td></tr>
+  <tr><td>Context recall</td><td>Did we retrieve everything needed to answer?</td><td>The retriever</td></tr>
+  <tr><td>Faithfulness</td><td>Are the claims in the answer supported by the context?</td><td>The generator</td></tr>
+  <tr><td>Answer relevance</td><td>Does the answer address the question asked?</td><td>The generator</td></tr>
+</table>
+<p>The split is the point. Two numbers for retrieval, two for generation, and a drop in any one tells you where to look.</p>
+<h3>Faithfulness is not correctness</h3>
+<div class="warn"><b>An answer can be perfectly faithful and completely wrong.</b> Faithfulness asks whether the answer follows from the retrieved context. If the retrieved context was the superseded 2023 policy, a faithful answer repeats it accurately and misleads the user. Faithfulness measures grounding, not truth. Track answer correctness separately against your known-good answers.</div>
+<p>This distinction catches teams out because faithfulness is the easier metric to compute and it looks like what you want. A system scoring 0.95 on faithfulness and 0.60 on correctness has a retrieval problem, and only tracking the first hides it entirely.</p>
+<h3>Why not BLEU or ROUGE</h3>
+<p>Text-overlap metrics count shared words with a reference answer. Shared wording is not what breaks in a RAG system. An answer can share most of its vocabulary with the reference and invert the meaning, or share almost none and be entirely correct. These metrics are the wrong instrument here and their use is mostly inherited from machine translation.</p>
+<h3>Running it in CI</h3>
+<p>The evaluation set earns most of its value when it runs automatically.</p>
+<pre><code># evals/thresholds.yaml
+retrieval_recall_at_50:  { min: 0.90, blocking: true }
+retrieval_recall_at_5:   { min: 0.75, blocking: true }
+faithfulness:            { min: 0.90, blocking: true }
+answer_correctness:      { min: 0.70, blocking: true }
+context_precision:       { min: 0.60, blocking: false }
+answer_relevance:        { min: 0.80, blocking: false }
+refusal_rate_no_answer:  { min: 0.85, blocking: true }</code></pre>
+<p>That last one is the measure most often missing. On the subset of questions with no answer in the corpus, what proportion does the system correctly refuse? A system that drifts towards answering everything will show improving relevance scores while becoming less trustworthy.</p>
+<p>Run the suite on every change to prompts, chunking, retrieval configuration or model. Treat a threshold breach as a failing test, not as information.</p>
+<h3>Judge models and their limits</h3>
+<p>Several of these metrics are computed by prompting a model to judge. That is practical and imperfect. Judge agreement with human raters varies by dimension, and is weaker on subjective axes such as tone than on factual ones.</p>
+<p>Two mitigations. Audit a sample of judgements against human review, perhaps ten percent, and track the agreement rate. And use judge-based metrics to detect movement rather than to certify absolute quality. A faithfulness score falling from 0.94 to 0.81 is a real signal even if neither number is precisely right.</p>
+
+<h2 id="s18"><span class="num">Section 18</span>Observability</h2>
+<p class="lede">Conventional application monitoring tells you a request took 2.4 seconds and returned 200. For a RAG system that is close to useless, because the request can be fast, successful and wrong.</p>
+<h3>Trace shape</h3>
+<p>One user interaction is one trace, with a span per pipeline stage.</p>
+<pre><code>trace: rag_query
+├── span: embed_query      model, dimensions, latency
+├── span: retrieve_dense   k, chunk_ids, distances, filters applied
+├── span: retrieve_sparse  k, chunk_ids, bm25 scores
+├── span: fuse             rrf k, weights, output order
+├── span: rerank           model, input_ids, output_ids, scores, degraded?
+├── span: generate         model, prompt_tokens, completion_tokens, temperature
+└── span: post_process     citations found, citations resolved, invalid</code></pre>
+<p>Record chunk IDs and scores, not chunk text. Text makes traces enormous and creates a second copy of your corpus inside a system with different access controls, which is both a cost problem and a security one.</p>
+<h3>What to measure</h3>
+<table>
+  <tr><th>Metric</th><th>Why</th><th>Investigate when</th></tr>
+  <tr><td>Top-1 retrieval score distribution</td><td>Falling scores mean queries are drifting away from what the corpus covers</td><td>Median drops more than 15% week on week</td></tr>
+  <tr><td>Context utilisation</td><td>Share of retrieved chunks actually cited in the answer</td><td>Below 40%. You are retrieving noise and paying tokens for it.</td></tr>
+  <tr><td>Refusal rate</td><td>How often the system says it cannot answer</td><td>A sudden rise usually means an ingestion job failed. A slow fall means drift towards over-answering.</td></tr>
+  <tr><td>Rerank degradation rate</td><td>How often you served unreranked results</td><td>Above 1%. Quality is dropping invisibly.</td></tr>
+  <tr><td>Invalid citation rate</td><td>Citations pointing at sources that were not supplied</td><td>Any sustained rise</td></tr>
+  <tr><td>Tokens per resolved query</td><td>The only cost metric tied to value</td><td>Rising while resolution stays flat</td></tr>
+  <tr><td>Time to first token</td><td>What users perceive as speed</td><td>p95 above 1.2 seconds</td></tr>
+</table>
+<h3>Sample successes, keep every failure</h3>
+<div class="tip"><b>Full-fidelity tracing on every request is expensive and mostly redundant.</b> Sample 5% of turns that went well. Retain 100% of turns where the user gave negative feedback, retried, rephrased, or abandoned. Your failures are the dataset worth having, and they are the ones that feed your evaluation set.</div>
+<h3>Redaction</h3>
+<p>Prompts contain user input and user input contains personal data. Configure redaction in the SDK layer, before the trace is emitted, rather than in the observability platform where the raw payload has already crossed a network boundary. This is the same mistake teams make with application logging and it is more consequential here, because a prompt carries whole sentences rather than field values.</p>
+<h3>Closing the loop</h3>
+<p>Instrument a thumbs up and down on every answer, and store the trace ID with the rating. This is the cheapest high-quality signal available. A week of negative ratings, each with a full trace showing exactly which chunks reached the model, is more useful for improving the system than any amount of offline analysis.</p>
+
+<h2 id="s19"><span class="num">Section 19</span>Failure modes</h2>
+<p class="lede">A catalogue of what actually goes wrong, with the diagnostic signal for each. Most RAG debugging is pattern matching against this list.</p>
+<h3>Confidently wrong answers</h3>
+<p><b>Cause:</b> retrieval returned plausible but incorrect chunks. The model did exactly as instructed with bad input.<br>
+<b>Signal:</b> retrieval recall is low while faithfulness is high.<br>
+<b>Fix:</b> work on retrieval. Check chunking first, then hybrid search, then reranking. Do not touch the prompt.</p>
+<h3>Answers that miss facts you know are in the corpus</h3>
+<p><b>Cause:</b> usually chunking. The fact was split across a boundary, or buried in a chunk about something else, or lost in a table.<br>
+<b>Signal:</b> chunking ceiling is below your recall target. Search your chunk store for the fact directly; if it is not there intact, the problem is upstream of retrieval entirely.<br>
+<b>Fix:</b> structural chunking, table handling, contextual prefixes.</p>
+<h3>Exact identifiers never match</h3>
+<p><b>Cause:</b> dense-only retrieval. Codes and identifiers carry little semantic signal.<br>
+<b>Signal:</b> queries containing codes have far lower recall than prose queries. Segment your evaluation by query type and the gap is obvious.<br>
+<b>Fix:</b> hybrid search.</p>
+<h3>Quality dropped after a model change</h3>
+<p><b>Cause:</b> stale index. Embeddings from the previous model are not comparable with queries embedded by the new one.<br>
+<b>Signal:</b> retrieval scores collapse across the board, not for a subset.<br>
+<b>Fix:</b> re-embed. Check the <code>embedding_model</code> column to find what was missed.</p>
+<h3>Correct-sounding answers from outdated documents</h3>
+<p><b>Cause:</b> supersession. Both versions are indexed and both are relevant.<br>
+<b>Signal:</b> invisible to standard metrics. Only your evaluation set's contradiction cases catch it.<br>
+<b>Fix:</b> status and effective-date metadata, filtered before ranking.</p>
+<h3>The system answers questions it should refuse</h3>
+<p><b>Cause:</b> no explicit permission to decline, or retrieval always returning something regardless of relevance.<br>
+<b>Signal:</b> refusal rate near zero on your no-answer evaluation questions.<br>
+<b>Fix:</b> explicit instruction permitting refusal, plus a minimum relevance threshold below which you pass no context at all.</p>
+<h3>Good answers that cite the wrong source</h3>
+<p><b>Cause:</b> the model attributes a correct claim to the wrong supplied passage.<br>
+<b>Signal:</b> faithfulness scores fine, manual review shows mismatches.<br>
+<b>Fix:</b> fewer sources in context, clearer numbering, and citation resolution that verifies support rather than only range.</p>
+<h3>Latency spikes under load</h3>
+<p><b>Cause:</b> usually the reranker, occasionally index memory pressure.<br>
+<b>Signal:</b> span-level latency in traces isolates it in seconds.<br>
+<b>Fix:</b> cap the rerank pool, add a timeout with graceful degradation, or move to a smaller cross-encoder.</p>
+<h3>Answers degrade for one language or region</h3>
+<p><b>Cause:</b> embedding model with weaker multilingual coverage, or an English-only text search configuration in the sparse index.<br>
+<b>Signal:</b> segment your evaluation by language. The gap is usually stark.<br>
+<b>Fix:</b> multilingual embedding model, per-language text search configuration.</p>
+
+<h2 id="s20"><span class="num">Section 20</span>Latency and cost</h2>
+<p class="lede">A RAG query has five or six network hops before a token is generated. Each is a place to lose a hundred milliseconds, and the total is what the user feels.</p>
+<h3>Where the time goes</h3>
+<table>
+  <tr><th>Stage</th><th>Typical</th><th>How to reduce it</th></tr>
+  <tr><td>Query embedding</td><td>20 to 100 ms</td><td>Cache repeated queries. Use a smaller model for queries than for documents if quality holds.</td></tr>
+  <tr><td>Dense retrieval</td><td>5 to 50 ms</td><td>Lower <code>ef_search</code>, but measure the recall cost. Keep the index in memory.</td></tr>
+  <tr><td>Sparse retrieval</td><td>5 to 30 ms</td><td>Run in parallel with dense, not after it.</td></tr>
+  <tr><td>Reranking</td><td>100 to 500 ms</td><td>Smaller pool, smaller model, or drop it where the evaluation says it adds little.</td></tr>
+  <tr><td>Generation, first token</td><td>200 ms to 2 s</td><td>Stream. Shorter prompts. A smaller model where quality permits.</td></tr>
+  <tr><td>Generation, full answer</td><td>1 to 10 s</td><td>Streaming makes this mostly invisible.</td></tr>
+</table>
+<h3>Easy wins</h3>
+<ul>
+  <li><b>Parallelise the retrievers.</b> Dense and sparse have no dependency on each other. Running them sequentially wastes the shorter of the two every single query.</li>
+  <li><b>Stream the answer.</b> Time to first token is what users experience as speed. A four-second answer that starts in 400 milliseconds feels faster than a two-second answer that arrives all at once.</li>
+  <li><b>Cache query embeddings.</b> In most products a small number of questions account for a large share of traffic.</li>
+  <li><b>Cache whole answers for exact repeats,</b> with a short time to live and invalidation on corpus change. Be careful with personalised or permission-scoped results.</li>
+</ul>
+<h3>Cost structure</h3>
+<p>Costs fall into three groups with very different shapes.</p>
+<table>
+  <tr><th>Cost</th><th>Scales with</th><th>Notes</th></tr>
+  <tr><td>Embedding at ingestion</td><td>Corpus size, re-indexed on every model change</td><td>One-off per version, and larger than teams expect at first re-index.</td></tr>
+  <tr><td>Embedding at query time</td><td>Query volume</td><td>Small per query, non-trivial at scale.</td></tr>
+  <tr><td>Reranking</td><td>Query volume × pool size</td><td>Hosted rerank sits around a dollar per thousand searches. At a million queries a month that is a line item.</td></tr>
+  <tr><td>Generation</td><td>Query volume × context length</td><td>Usually dominant. Context length is the lever you control.</td></tr>
+  <tr><td>Vector storage and index memory</td><td>Corpus size × dimensions</td><td>Steady. Half precision roughly halves it.</td></tr>
+</table>
+<h3>The lever that matters</h3>
+<p>Context length drives generation cost, and most systems pass more context than they need. If your context utilisation is 30%, you are paying for roughly three times the context the answer actually used.</p>
+<p>Reducing from eight passages to four typically cuts generation cost substantially with little quality loss, provided your reranking is good enough that the top four are the right four. That conditional is the whole argument for investing in reranking: better ranking lets you pass less context, which is both cheaper and, because models attend better to shorter inputs, often more accurate.</p>
+
+<h2 id="s21"><span class="num">Section 21</span>Keeping the corpus current</h2>
+<p class="lede">A corpus that was correct at launch and is not updated becomes a liability. The engineering question is how to update it incrementally without rebuilding everything.</p>
+<h3>Change detection</h3>
+<p>Hash the parsed content of each document. On every ingestion run, compare hashes and process only what changed.</p>
+<pre><code>documents
+  id
+  source_uri
+  content_hash        sha256 of parsed text
+  last_ingested_at
+  embedding_model
+  status              current | superseded | archived</code></pre>
+<p>Hash the parsed output rather than the raw file. A PDF re-saved with no content change produces different bytes and identical text, and you do not want to re-embed a thousand documents because someone opened them.</p>
+<h3>Updating chunks</h3>
+<p>When a document changes, the naive approach deletes all its chunks and re-creates them. That is correct and wasteful, because most documents change in one section.</p>
+<p>A better pattern hashes each chunk and reconciles.</p>
+<pre><code>def update_document(doc, new_chunks):
+    existing = {c.content_hash: c for c in db.chunks.for_document(doc.id)}
+    incoming = {hash_text(c.text): c for c in new_chunks}
+
+    unchanged = existing.keys() & incoming.keys()
+    removed   = existing.keys() - incoming.keys()
+    added     = incoming.keys() - existing.keys()
+
+    for h in removed:
+        db.chunks.delete(existing[h].id)
+    for h in added:
+        chunk = incoming[h]
+        chunk.embedding = embed(chunk.text, input_type="search_document")
+        db.chunks.insert(chunk)
+
+    metrics.gauge("ingest.chunks_unchanged", len(unchanged))
+    metrics.gauge("ingest.chunks_reembedded", len(added))</code></pre>
+<p>On a typical documentation corpus this reduces re-embedding by an order of magnitude, because most chunks of a changed document are identical to before.</p>
+<h3>Deletions</h3>
+<p>Deleted source documents must produce deleted chunks. This sounds obvious and is frequently missed, because ingestion pipelines are usually written to add. A chunk whose source no longer exists will be retrieved and cited, and the citation link will 404, which is the most visible possible way to lose a user's trust.</p>
+<p>Run a periodic sweep comparing indexed document IDs against the source system and removing orphans. Treat a sudden spike in orphans as an alert rather than a cleanup; it usually means the source listing failed rather than that a thousand documents were deleted.</p>
+<h3>Freshness as a metric</h3>
+<p>Track the age distribution of your index relative to the source. The useful figure is not average age but the tail: how old is the oldest document that should have been updated? A pipeline that silently skips one source type will show a healthy average and a terrible p99.</p>
+
+<h2 id="s22"><span class="num">Section 22</span>Security and multi-tenancy</h2>
+<p class="lede">A retrieval system is an engine for surfacing text that someone thought was relevant. Without access control, it is also an engine for surfacing text someone should not see.</p>
+<h3>The core requirement</h3>
+<p>Every retrieval must be filtered by what the requesting user is permitted to see, and that filter must be applied in a way that cannot be bypassed by any query. Post-filtering is not sufficient for security, because a post-filter that removes everything returns an empty result rather than an error, and because any bug in the filter leaks.</p>
+<pre><code>-- Security filter is not optional and not a post-step
+SELECT id, text
+FROM chunks
+WHERE tenant_id = $tenant          -- always
+  AND access_level <= $user_level  -- always
+  AND status = 'current'
+ORDER BY embedding_half <=> $query
+LIMIT 50;</code></pre>
+<p>Enforce it below your application logic where you can. Postgres row-level security is well suited to this, because it applies regardless of what the calling query says.</p>
+<pre><code>ALTER TABLE chunks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON chunks
+  USING (tenant_id = current_setting('app.tenant_id')::uuid);</code></pre>
+<p>With the policy in place, a developer who forgets the WHERE clause gets no rows rather than another tenant's documents.</p>
+<h3>Permissions change</h3>
+<p>A user's access can be revoked between ingestion and query. Filtering on a permission value copied onto the chunk at ingestion time will serve stale permissions. Either filter against the live permission system, or re-evaluate access at query time against a current source, and accept the latency cost.</p>
+<p>The same applies to documents whose classification changes. A document reclassified as restricted must stop being retrievable immediately, which means the classification has to live somewhere that updates, not baked into an embedding.</p>
+<h3>What leaks through an answer</h3>
+<div class="warn"><b>An answer can leak content the user could not have retrieved directly.</b> If your filter is applied to retrieval but a cached answer, a summary, or a suggested-question feature was generated from a broader corpus, that derived content is a leak path. Audit everything downstream of retrieval that persists text, including caches, logs, traces and analytics.</div>
+<h3>Personal data</h3>
+<ul>
+  <li><b>Right to erasure applies to your index.</b> Deleting a source document must remove its chunks, its embeddings and any cached answers derived from it. Build that path before you need it.</li>
+  <li><b>Traces contain prompts, and prompts contain user text.</b> Redact at the SDK layer, and set a retention period shorter than your general log retention.</li>
+  <li><b>Embeddings are derived personal data.</b> A vector computed from text about a person is not anonymous simply because it is numeric. Treat it with the same controls as the source.</li>
+</ul>
+<h3>Prompt injection</h3>
+<p>Retrieved content enters the prompt. If any of your corpus is user-contributed, someone will eventually put instructions in a document and your generator will read them.</p>
+<p>There is no complete defence, but three measures help materially. Keep retrieved content clearly delimited and labelled as data rather than instruction. Do not give the generator tools or side effects that a retrieved instruction could usefully trigger. And treat any corpus that accepts untrusted input as a separate, lower-trust index rather than mixing it with your authoritative content.</p>
+
+<h2 id="s23"><span class="num">Section 23</span>Reference implementation</h2>
+<p class="lede">The pieces assembled, with the reasoning attached. Roughly what a production query path looks like once everything above is applied.</p>
+<pre><code>@dataclass
+class RetrievalConfig:
+    dense_k: int = 50
+    sparse_k: int = 50
+    rrf_k: int = 60
+    rrf_weights: tuple = (1.0, 0.7)    # dense, sparse; tuned on the eval set
+    rerank_to: int = 4
+    rerank_timeout_s: float = 0.8
+    min_score: float = 0.28            # below this, pass no context at all
+
+
+class RagPipeline:
+    def __init__(self, db, embedder, reranker, llm, config, tracer):
+        self.db, self.embedder = db, embedder
+        self.reranker, self.llm = reranker, llm
+        self.cfg, self.tracer = config, tracer
+
+    async def answer(self, question: str, ctx: UserContext) -> Answer:
+        with self.tracer.trace("rag_query", user=ctx.user_id) as trace:
+
+            with trace.span("embed_query"):
+                qvec = await self.embedder.embed(
+                    question, input_type="search_query"
+                )
+
+            # Retrievers are independent. Run them together.
+            with trace.span("retrieve"):
+                dense, sparse = await asyncio.gather(
+                    self.db.dense_search(qvec, ctx, self.cfg.dense_k),
+                    self.db.sparse_search(question, ctx, self.cfg.sparse_k),
+                )
+                trace.set("dense_ids", [c.id for c in dense])
+                trace.set("sparse_ids", [c.id for c in sparse])
+
+            with trace.span("fuse"):
+                fused = rrf(
+                    [[c.id for c in dense], [c.id for c in sparse]],
+                    k=self.cfg.rrf_k, weights=self.cfg.rrf_weights,
+                )
+                candidates = self.db.hydrate(fused, ctx)
+
+            if not candidates:
+                return Answer.no_sources(question)
+
+            with trace.span("rerank") as span:
+                ranked, degraded = await self._rerank(question, candidates)
+                span.set("degraded", degraded)
+                if degraded:
+                    metrics.increment("rerank.degraded")
+
+            top = [c for c in ranked[: self.cfg.rerank_to]
+                   if c.score >= self.cfg.min_score]
+
+            if not top:
+                # Nothing cleared the bar. Refusing is the correct answer.
+                metrics.increment("refused.below_threshold")
+                return Answer.insufficient_context(question)
+
+            with trace.span("generate") as span:
+                raw = await self.llm.generate(
+                    build_prompt(question, top), stream=True
+                )
+                span.set("prompt_tokens", raw.usage.prompt_tokens)
+
+            with trace.span("post_process"):
+                text, cited = resolve_citations(raw.text, top)
+                utilisation = len(cited) / len(top)
+                metrics.histogram("context_utilisation", utilisation)
+
+            return Answer(text=text, sources=cited, trace_id=trace.id)
+
+    async def _rerank(self, question, candidates):
+        try:
+            scored = await asyncio.wait_for(
+                self.reranker.score(question, candidates),
+                timeout=self.cfg.rerank_timeout_s,
+            )
+            return scored, False
+        except (asyncio.TimeoutError, RerankerUnavailable):
+            return candidates, True</code></pre>
+<h3>The decisions encoded here</h3>
+<ul>
+  <li><b>Retrievers run concurrently</b>, so the cost is the slower of the two rather than their sum.</li>
+  <li><b>A minimum score threshold</b> means an irrelevant corpus produces a refusal rather than a confident answer from the least-bad chunks.</li>
+  <li><b>Reranking degrades rather than failing</b>, and the degradation is counted.</li>
+  <li><b>Context utilisation is measured on every query</b>, which is how you discover you are passing twice the context you need.</li>
+  <li><b>The trace ID is returned with the answer</b>, so a user's thumbs-down connects directly to the full pipeline record.</li>
+</ul>
+
+<h2 id="s24"><span class="num">Section 24</span>Troubleshooting</h2>
+<h3>Retrieval returns nothing</h3>
+<ol>
+  <li>Filters are too narrow. Check whether <code>status = 'current'</code> or a date filter has excluded everything. Run the query without filters and compare counts.</li>
+  <li>Tenant or access filter mismatched. Confirm the values being bound are what you expect.</li>
+  <li>Empty or partially built index. Count rows with a non-null embedding against total rows.</li>
+  <li>Sparse query produced no terms. A query of only stopwords yields an empty tsquery.</li>
+</ol>
+<h3>Vector query is slow</h3>
+<ol>
+  <li>The index is not being used. Run <code>EXPLAIN</code>. The usual cause is an operator that does not match the index opclass, which silently produces a sequential scan.</li>
+  <li><code>ef_search</code> set too high. Lower it and measure the recall cost.</li>
+  <li>Index does not fit in memory. Check for disk reads during the query.</li>
+  <li>Pre-filtering on a low-selectivity condition, which prevents the index from helping. Consider post-filtering with over-retrieval.</li>
+</ol>
+<h3>Recall is fine at 50 but poor at 5</h3>
+<p>Your retriever is working and your ranking is not. This is the clearest possible signal to invest in reranking, or to check that your reranker is actually being applied rather than silently timing out.</p>
+<h3>Everything got worse and nothing changed</h3>
+<ol>
+  <li>Something did change. Check whether a hosted embedding or rerank model was updated under you.</li>
+  <li>An ingestion run partially failed, removing chunks without replacing them. Compare chunk counts over time.</li>
+  <li>Corpus drift: new documents on new topics have diluted the index. Check the top-1 score distribution over time.</li>
+  <li>Your evaluation set has gone stale relative to the corpus. Check that its source passages still exist.</li>
+</ol>
+<h3>The answers are fine but users complain</h3>
+<p>Usually a mismatch between what the system answers and what users wanted to ask. Read fifty real queries. Teams building retrieval systems consistently underestimate how different real user questions are from the ones they tested with, and no amount of pipeline tuning fixes a corpus that does not contain the answers people want.</p>
+
+<h2 id="s25"><span class="num">Section 25</span>Production checklist</h2>
+<h3>Before launch</h3>
+<ul>
+  <li>Evaluation set of at least 40 questions exists, in version control, including no-answer and contradiction cases.</li>
+  <li>Chunking ceiling measured and above your target recall.</li>
+  <li>Retrieval recall measured at both k=50 and k=5.</li>
+  <li>Faithfulness and answer correctness measured separately.</li>
+  <li>Refusal rate on no-answer questions measured and acceptable.</li>
+  <li>Evaluation runs in CI with blocking thresholds.</li>
+</ul>
+<h3>Data and index</h3>
+<ul>
+  <li>Parser output reviewed by hand on a representative sample.</li>
+  <li>Tables handled deliberately rather than by default chunking.</li>
+  <li>Embedding model and version recorded per chunk.</li>
+  <li>Index type and parameters chosen deliberately, with <code>EXPLAIN</code> confirming the index is used.</li>
+  <li>Supersession metadata present, or its absence documented as a known limitation.</li>
+  <li>Deletion path from source to chunks to caches is implemented and tested.</li>
+</ul>
+<h3>Security</h3>
+<ul>
+  <li>Tenant and access filtering enforced below application logic.</li>
+  <li>Permission changes take effect without re-indexing.</li>
+  <li>Traces redacted at the SDK layer, with a defined retention period.</li>
+  <li>Untrusted or user-contributed content held in a separate index.</li>
+  <li>Erasure path covers chunks, embeddings, caches and traces.</li>
+</ul>
+<h3>Operations</h3>
+<ul>
+  <li>Tracing covers every pipeline stage with chunk IDs and scores.</li>
+  <li>Negative-feedback turns retained at full fidelity.</li>
+  <li>Alerts on retrieval score drift, refusal rate, rerank degradation and ingestion failures.</li>
+  <li>Rerank timeout with graceful degradation, and the degradation counted.</li>
+  <li>Runbook for the three most likely incidents: ingestion failure, reranker outage, index memory pressure.</li>
+  <li>A named person owns the evaluation set and reviews additions.</li>
+</ul>
+
+<h2 id="s26"><span class="num">Section 26</span>Multi-turn conversation</h2>
+<p class="lede">Everything above assumes one question in isolation. Real users ask follow-ups, and a retrieval pipeline that ignores conversation history fails on the second message in a way that is obvious to the user and invisible in your metrics.</p>
+<h3>The problem</h3>
+<p>A user asks "what is the travel allowance for contractors?" and gets a good answer. They follow up with "what about for assignments under six months?"</p>
+<p>That second message, embedded on its own, retrieves nothing useful. It contains no mention of travel, allowances or contractors. The retriever sees a fragment about assignment length and returns documents about assignment length. The answer is irrelevant and the user concludes the system is stupid, which from their point of view it is.</p>
+<p>This affects a large share of real traffic. Evaluation sets built from standalone questions never catch it, because every question in them is self-contained.</p>
+<h3>Query rewriting</h3>
+<p>The standard fix is to rewrite the follow-up into a standalone question using the conversation history, then retrieve against the rewrite.</p>
+<pre><code>REWRITE_PROMPT = """Given the conversation below, rewrite the final user
+message as a standalone question that can be understood without the
+conversation. Preserve the user's intent exactly. Do not answer it.
+
+If the final message is already standalone, return it unchanged.
+If the final message is not a question (a greeting, thanks, an
+acknowledgement), return the token NO_RETRIEVAL.
+
+CONVERSATION
+{history}
+
+FINAL MESSAGE
+{message}
+
+STANDALONE QUESTION:"""</code></pre>
+<p>Applied to the example, this produces "what is the travel allowance for contractors on assignments under six months?", which retrieves correctly.</p>
+<h3>The details that matter</h3>
+<p><b>Bound the history.</b> Passing the entire conversation makes the rewrite drift towards earlier topics. The last three or four turns is usually right, and should be a tuned parameter rather than a constant.</p>
+<p><b>Handle the non-question case.</b> "Thanks, that is helpful" should not trigger retrieval. Without the <code>NO_RETRIEVAL</code> escape, your system retrieves documents about gratitude and pays for a generation call to say "you are welcome".</p>
+<p><b>Log the rewrite.</b> It is a transformation of the user's words that they never see, and when an answer is wrong it is frequently the rewrite that went wrong rather than the retrieval. Store it on the trace.</p>
+<pre><code>with trace.span("rewrite") as span:
+    standalone = await rewriter.rewrite(history[-4:], message)
+    span.set("original", message)
+    span.set("rewritten", standalone)
+
+    if standalone == "NO_RETRIEVAL":
+        metrics.increment("query.no_retrieval")
+        return await self.llm.chat(history, message)   # conversational reply</code></pre>
+<h3>The cost</h3>
+<p>Rewriting adds a model call before retrieval, which lands directly on time to first token. Two mitigations are worth knowing.</p>
+<p>Skip the rewrite on the first turn of a conversation, where there is no history to resolve against. This is free and removes the cost from a large share of queries.</p>
+<p>Use a small, fast model. Rewriting is a mechanical task and does not need your best model. A small model with a tight prompt handles it at a fraction of the latency.</p>
+<h3>An alternative worth knowing</h3>
+<p>Instead of rewriting, retrieve against both the raw follow-up and the previous turn's question, then fuse the two result sets with RRF. This avoids the extra model call entirely and performs surprisingly well on short follow-ups. It handles pronouns badly, so it is a weaker general solution, but as a latency-sensitive fallback it is reasonable.</p>
+<h3>Evaluating multi-turn</h3>
+<p>Your evaluation set needs conversation cases or you cannot measure any of this. Add ten to fifteen two-turn and three-turn sequences, where the final question depends on earlier context. Score them exactly as you score single-turn questions: did the correct passage get retrieved, and was the answer correct.</p>
+<p>Teams that add these commonly find their multi-turn recall is twenty or thirty points below their single-turn recall, which means a large fraction of real traffic was performing far worse than the headline number suggested.</p>
+
+<h2 id="s27"><span class="num">Section 27</span>Beyond single-shot retrieval</h2>
+<p class="lede">Some questions cannot be answered by one retrieval pass, however good it is. Recognising which, and handling them differently, is the difference between a system that handles most questions and one that handles the hard ones too.</p>
+<h3>Questions that need more than one pass</h3>
+<table>
+  <tr><th>Type</th><th>Example</th><th>Why one pass fails</th></tr>
+  <tr><td>Multi-hop</td><td>"Which of our offices are in countries where the contractor policy applies?"</td><td>Needs the policy's country list, then the office list. Neither document contains both.</td></tr>
+  <tr><td>Comparative</td><td>"How does the 2026 expenses policy differ from 2024?"</td><td>Needs both documents deliberately, and retrieval will tend to return near-duplicates from one.</td></tr>
+  <tr><td>Aggregative</td><td>"How many policies mention data retention?"</td><td>Needs a count across the corpus, not a passage. This is a structured query wearing prose clothing.</td></tr>
+  <tr><td>Compound</td><td>"What is the travel allowance and how do I claim it?"</td><td>Two questions. One retrieval optimises for a blend of both and serves neither well.</td></tr>
+</table>
+<h3>Query decomposition</h3>
+<p>For compound questions, split and retrieve separately.</p>
+<pre><code>DECOMPOSE_PROMPT = """Break this question into the minimum number of
+independent sub-questions needed to answer it fully. If it is already a
+single question, return it unchanged as the only item.
+
+Return one sub-question per line. Maximum 4.
+
+QUESTION: {question}"""</code></pre>
+<pre><code>async def decomposed_retrieve(question, ctx):
+    subs = await decomposer.split(question)
+    if len(subs) == 1:
+        return await retrieve(subs[0], ctx)
+
+    results = await asyncio.gather(*[retrieve(s, ctx) for s in subs])
+    # Fuse, dedupe, and keep provenance so the prompt can show which
+    # sub-question each passage answers.
+    return fuse_with_provenance(subs, results)</code></pre>
+<p>Keep the sub-question attached to each passage. The generator produces much better compound answers when it can see which part of the question each source addresses.</p>
+<h3>Iterative retrieval</h3>
+<p>For genuine multi-hop questions, retrieve, let the model identify what is still missing, and retrieve again.</p>
+<pre><code>async def iterative_retrieve(question, ctx, max_rounds=3):
+    gathered, seen = [], set()
+
+    for round_num in range(max_rounds):
+        query = question if round_num == 0 else await next_query(question, gathered)
+        if query is None:
+            break
+
+        new = [c for c in await retrieve(query, ctx) if c.id not in seen]
+        seen.update(c.id for c in new)
+        gathered.extend(new)
+
+        if await sufficient(question, gathered):
+            break
+
+    return gathered</code></pre>
+<div class="warn"><b>Cap the rounds and budget the latency.</b> Each round is a retrieval plus a model call to decide what is missing. Three rounds can turn a one-second answer into five. Iterative retrieval is correct for a small minority of questions and ruinous as a default, so route into it deliberately rather than applying it everywhere.</div>
+<h3>Routing</h3>
+<p>The practical architecture is a cheap classifier that sends each question down the right path.</p>
+<pre><code>ROUTES = {
+    "structured":  run_sql_query,         # counts, aggregates, filters
+    "simple":      single_shot_retrieve,  # the large majority
+    "compound":    decomposed_retrieve,
+    "multi_hop":   iterative_retrieve,
+    "chitchat":    conversational_reply,  # no retrieval
+}</code></pre>
+<p>Route with a small model or even a set of heuristics. The goal is not perfect classification; it is to keep the expensive paths off the majority of traffic while making them available where they are needed.</p>
+<p>Measure the distribution. If 94% of your traffic routes to <code>simple</code>, the sophisticated paths are serving a small minority and should be judged on whether that minority matters, not on how interesting they are to build.</p>
+<h3>Knowing when to stop</h3>
+<p>There is a tendency to keep adding retrieval sophistication in response to quality problems. Before adding a technique, check that you have exhausted the cheaper ground. Chunking, metadata, hybrid search and reranking account for most achievable improvement on most corpora, and they are all simpler to operate than an iterative loop.</p>
+<p>A system with excellent chunking and plain single-shot retrieval generally outperforms one with poor chunking and an agentic retrieval loop. The loop is visible and impressive; the chunking is where the quality actually came from.</p>
+
+<h2 id="a1"><span class="num">Appendix A</span>Metrics reference</h2>
+<table>
+  <tr><th>Metric</th><th>Measures</th><th>Computed by</th><th>Diagnoses</th></tr>
+  <tr><td>Chunking ceiling</td><td>Whether the answer survived ingestion intact</td><td>String matching against known source passages</td><td>Parsing and chunking</td></tr>
+  <tr><td>Retrieval recall@k</td><td>Correct passage anywhere in top k</td><td>Exact match on chunk ID</td><td>Retrieval</td></tr>
+  <tr><td>Recall@50 minus recall@5</td><td>Gap between finding and surfacing</td><td>Arithmetic on the above</td><td>Ranking and reranking</td></tr>
+  <tr><td>Precision@k</td><td>Fraction of top k that are relevant</td><td>Labels or judge model</td><td>Retrieval noise</td></tr>
+  <tr><td>MRR</td><td>Position of the first relevant result</td><td>Labels</td><td>Ranking</td></tr>
+  <tr><td>nDCG@k</td><td>Position-discounted graded relevance</td><td>Graded labels</td><td>Ranking</td></tr>
+  <tr><td>Context recall</td><td>Ground-truth claims attributable to context</td><td>Judge model</td><td>Retrieval sufficiency</td></tr>
+  <tr><td>Context precision</td><td>Relevant context ranked near the top</td><td>Judge model</td><td>Ranking</td></tr>
+  <tr><td>Faithfulness</td><td>Answer claims supported by context</td><td>Judge model</td><td>Generation grounding</td></tr>
+  <tr><td>Answer relevance</td><td>Answer addresses the question</td><td>Judge model</td><td>Generation</td></tr>
+  <tr><td>Answer correctness</td><td>Answer matches the known-good answer</td><td>Judge model or human</td><td>The system overall</td></tr>
+  <tr><td>Refusal rate on no-answer set</td><td>Correctly declining when it should</td><td>Exact classification</td><td>Trustworthiness</td></tr>
+  <tr><td>Context utilisation</td><td>Share of passed context actually cited</td><td>Citation resolution</td><td>Cost efficiency</td></tr>
+</table>
+
+<h2 id="a2"><span class="num">Appendix B</span>Chunking decisions</h2>
+<table>
+  <tr><th>Content</th><th>Strategy</th><th>Size</th><th>Notes</th></tr>
+  <tr><td>Long-form prose</td><td>Recursive character</td><td>400 to 600 tokens, 10 to 20% overlap</td><td>Add a contextual prefix from the section path.</td></tr>
+  <tr><td>Structured documentation</td><td>Structural, split on headings</td><td>Natural section size, capped</td><td>Best case. Preserve the heading hierarchy.</td></tr>
+  <tr><td>Tables</td><td>Whole table, linearised per row</td><td>Never split</td><td>Repeat headers in each row's text.</td></tr>
+  <tr><td>Code</td><td>Structural, on function or class</td><td>Whole unit</td><td>Include the file path and imports as a prefix.</td></tr>
+  <tr><td>FAQs</td><td>One chunk per question</td><td>Whole unit</td><td>Embed question and answer together.</td></tr>
+  <tr><td>Support tickets</td><td>One chunk per ticket</td><td>Whole unit</td><td>Include the resolution; a ticket without it teaches the wrong thing.</td></tr>
+  <tr><td>Transcripts</td><td>Semantic or fixed with large overlap</td><td>600 to 900 tokens</td><td>Speaker labels matter. Keep them.</td></tr>
+  <tr><td>Legal or policy</td><td>Structural, on clause</td><td>Whole clause</td><td>Clause numbering is the citation. Preserve it.</td></tr>
+</table>
+
+<h2 id="a3"><span class="num">Appendix C</span>Failure quick reference</h2>
+<table>
+  <tr><th>Symptom</th><th>Look at</th></tr>
+  <tr><td>Confident and wrong</td><td>Retrieval. Inspect the chunks that reached the model.</td></tr>
+  <tr><td>Misses facts known to be present</td><td>Chunking ceiling, then <code>top_k</code>.</td></tr>
+  <tr><td>Exact identifiers never match</td><td>Hybrid search is off or weighted too low.</td></tr>
+  <tr><td>Quality collapsed suddenly</td><td>Stale index after a model change.</td></tr>
+  <tr><td>Answers from old documents</td><td>Supersession metadata missing or not filtered.</td></tr>
+  <tr><td>Never refuses</td><td>No refusal instruction, no minimum score threshold.</td></tr>
+  <tr><td>Recall good at 50, poor at 5</td><td>Reranking. Check it is running and not timing out.</td></tr>
+  <tr><td>Latency spikes</td><td>Rerank pool size, or index memory pressure.</td></tr>
+  <tr><td>One language performs worse</td><td>Embedding model coverage, text search configuration.</td></tr>
+  <tr><td>Citations point nowhere</td><td>Orphaned chunks from deleted sources.</td></tr>
+</table>
+
+<h2 id="a4"><span class="num">Appendix D</span>Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td>ANN</td><td>Approximate nearest neighbour. Trades exactness for speed in vector search.</td></tr>
+  <tr><td>Bi-encoder</td><td>Model that embeds query and document independently. Fast, precomputable, less accurate than a cross-encoder.</td></tr>
+  <tr><td>BM25</td><td>A keyword ranking function weighting term frequency by rarity. The standard sparse retrieval method.</td></tr>
+  <tr><td>Chunking ceiling</td><td>The proportion of answers that survive ingestion intact. An upper bound on retrieval recall.</td></tr>
+  <tr><td>Cross-encoder</td><td>Model that processes query and document together. Accurate, cannot be precomputed, used for reranking.</td></tr>
+  <tr><td>Dense retrieval</td><td>Vector similarity search over embeddings.</td></tr>
+  <tr><td>ef_search</td><td>HNSW query-time parameter trading recall against speed.</td></tr>
+  <tr><td>Faithfulness</td><td>Whether an answer's claims follow from the retrieved context. Not the same as correctness.</td></tr>
+  <tr><td>halfvec</td><td>pgvector half-precision vector type, used to index beyond the 2,000-dimension limit.</td></tr>
+  <tr><td>HNSW</td><td>Hierarchical navigable small world. A graph-based ANN index.</td></tr>
+  <tr><td>Hybrid search</td><td>Running dense and sparse retrieval together and fusing the results.</td></tr>
+  <tr><td>IVFFlat</td><td>An ANN index partitioning vectors into lists around centroids.</td></tr>
+  <tr><td>RRF</td><td>Reciprocal rank fusion. Combines ranked lists using positions rather than scores.</td></tr>
+  <tr><td>Sparse retrieval</td><td>Keyword-based retrieval, typically BM25.</td></tr>
+  <tr><td>Supersession</td><td>One document replacing another. The failure mode invisible to standard retrieval metrics.</td></tr>
+  <tr><td>Top-k</td><td>The number of candidates returned by a retrieval stage.</td></tr>
+</table>
+
+</article>
+</div>
+
+<footer><div class="foot">
+  <p><b>Asim Raza</b> · Technical Content Writer · <a href="mailto:asim74726@gmail.com">asim74726@gmail.com</a> · <a href="https://www.linkedin.com/in/asim-raza18a">LinkedIn</a></p>
+  <p><a href="index.html">← Back to the full portfolio</a></p>
+  <p class="fine">This document is an original writing sample by Asim Raza, produced to demonstrate technical documentation practice. It is not affiliated with or endorsed by any vendor named in it. Technical details were checked against public documentation in November 2026 and may since have changed. All trademarks are the property of their respective owners.</p>
+</div></footer>
+
+</body>
+</html>
